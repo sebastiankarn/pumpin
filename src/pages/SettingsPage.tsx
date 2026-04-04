@@ -36,19 +36,17 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     const trimmed = displayName.trim();
-    await updateProfile({
-      display_name: trimmed || null,
-      dashboard_widgets: widgets,
-    });
+    await updateProfile({ display_name: trimmed || null });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   const toggleWidget = (w: DashboardWidget) => {
-    setSaved(false);
-    setWidgets((prev) =>
-      prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w],
-    );
+    setWidgets((prev) => {
+      const next = prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w];
+      updateProfile({ dashboard_widgets: next });
+      return next;
+    });
   };
 
   return (
