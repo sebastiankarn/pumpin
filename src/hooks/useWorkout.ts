@@ -7,6 +7,8 @@ import type {
   SessionExercise,
   SessionSet,
   WorkoutStats,
+  VolumeDataPoint,
+  VolumeByCategory,
 } from "../types";
 
 export function useWorkoutSessions() {
@@ -315,6 +317,116 @@ export function useWorkoutStats(): {
   }, [user]);
 
   return { stats, loading };
+}
+
+const PUSH_MUSCLES = ["chest", "shoulders", "triceps"];
+const PULL_MUSCLES = ["back", "biceps", "forearms"];
+const LEG_MUSCLES = ["quads", "hamstrings", "glutes", "calves", "legs"];
+
+function categorize(muscleGroup: string): keyof VolumeByCategory {
+  const mg = muscleGroup.toLowerCase();
+  if (PUSH_MUSCLES.some((m) => mg.includes(m))) return "push";
+  if (PULL_MUSCLES.some((m) => mg.includes(m))) return "pull";
+  if (LEG_MUSCLES.some((m) => mg.includes(m))) return "legs";
+  return "other";
+}
+
+export function useVolumeStats(range: "week" | "month" | "year" = "month") {
+  const { user } = useAuth();
+  const [chartData, setChartData] = useState<VolumeDataPoint[]>([]);
+  const [volumeByCategory, setVolumeByCategory] = useState<VolumeByCategory>({
+    push: 0,
+    pull: 0,
+    legs: 0,
+    other: 0,
+  });
+  const [totalVolume, setTotalVolume] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      setLoading(true);
+
+      const now = new Date();
+      let since: Date;
+      if (range === "week") {
+        since = new Date(now);
+        const dow = now.getDay();
+        since.setDate(now.getDate() - ((dow + 6) % 7));
+        since.setHours(0, 0, 0, 0);
+      } else if (range === "month") {
+        since = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else {
+        since = new Date(now.getFullYear(), 0, 1);
+      }
+
+      // Fetch finished sessions in range
+      const { data: sessions } = await supabase
+        .from("workout_sessions")
+        .select("id, started_at, duration_minutes")
+        .eq("user_id", user.id)
+        .not("finished_at", "is", null)
+        .gte("started_at", since.toISOString())
+        .order("started_at");
+
+      if (!sessions || sessions.length === 0) {
+        setChartData([]);
+        setVolumeByCategory({ push: 0, pull: 0, legs: 0, other: 0 });
+        setTotalVolume(0);
+        setLoading(false);
+        return;
+      }
+
+      const sessionIds = sessions.map((s) => s.id);
+
+      // Fetch all sets with exercise muscle groups for these sessions
+      const { data: exerciseRows } = await supabase
+        .from("session_exercises")
+        .select(
+          "session_id, exercise:exercises!exercise_id(muscle_group), sets:session_sets(weight, reps)",
+        )
+        .in("session_id", sessionIds);
+
+      // Build per-session volume + category totals
+      const sessionVolumeMap = new Map<string, number>();
+      const catTotals: VolumeByCategory = { push: 0, pull: 0, legs: 0, other: 0 };
+
+      for (const se of exerciseRows ?? []) {
+        const exerciseData = se.exercise as unknown as { muscle_group: string } | null;
+        const mg = exerciseData?.muscle_group ?? "";
+        const cat = categorize(mg);
+        const sets = (se.sets ?? []) as { weight: number | null; reps: number | null }[];
+        let vol = 0;
+        for (const s of sets) {
+          if (s.weight && s.reps) vol += s.weight * s.reps;
+        }
+        catTotals[cat] += vol;
+        sessionVolumeMap.set(
+          se.session_id,
+          (sessionVolumeMap.get(se.session_id) ?? 0) + vol,
+        );
+      }
+
+      const points: VolumeDataPoint[] = sessions.map((s) => ({
+        date: new Date(s.started_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        volume: sessionVolumeMap.get(s.id) ?? 0,
+        minutes: s.duration_minutes ?? 0,
+      }));
+
+      const total = catTotals.push + catTotals.pull + catTotals.legs + catTotals.other;
+
+      setChartData(points);
+      setVolumeByCategory(catTotals);
+      setTotalVolume(total);
+      setLoading(false);
+    })();
+  }, [user, range]);
+
+  return { chartData, volumeByCategory, totalVolume, loading };
 }
 
 export function usePreviousSession(

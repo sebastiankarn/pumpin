@@ -24,6 +24,7 @@ import {
   Trash2,
   Pause,
   Play,
+  Pencil,
 } from "lucide-react";
 import type { SessionExercise, SessionSet, WorkoutSession } from "../types";
 import LoadingScreen from "../components/LoadingScreen";
@@ -60,6 +61,7 @@ export default function WorkoutSessionPage() {
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [customDuration, setCustomDuration] = useState("");
   const [populating, setPopulating] = useState(true);
+  const [editing, setEditing] = useState(false);
 
   const { previousExercises } = usePreviousSession(
     session?.template_day_id ?? null,
@@ -231,6 +233,7 @@ export default function WorkoutSessionPage() {
   );
 
   const isFinished = !!session?.finished_at;
+  const readOnly = isFinished && !editing;
 
   if (!session || exercisesLoading || populating) return <LoadingScreen />;
 
@@ -274,7 +277,16 @@ export default function WorkoutSessionPage() {
               </p>
             )}
           </div>
-          <div className="w-9" />
+          {isFinished ? (
+            <button
+              onClick={() => setEditing(!editing)}
+              className={`p-2 -mr-2 ${editing ? "text-primary" : "text-gray-400"}`}
+            >
+              {editing ? <Check className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+            </button>
+          ) : (
+            <div className="w-9" />
+          )}
         </div>
       </header>
 
@@ -289,7 +301,7 @@ export default function WorkoutSessionPage() {
               sessionExercise={se}
               previousSets={prevSets}
               isExpanded={isExpanded}
-              isFinished={isFinished}
+              isFinished={readOnly}
               allExercises={allExercises}
               onToggle={() => setExpandedExercise(isExpanded ? null : se.id)}
               onSwap={() => {
@@ -304,7 +316,7 @@ export default function WorkoutSessionPage() {
           );
         })}
 
-        {!isFinished && (
+        {!readOnly && (
           <button
             onClick={() => {
               setSwapTarget(null);

@@ -69,8 +69,10 @@ export interface SessionSet {
 
 export interface UserProfile {
   id: string;
+  display_name: string | null;
   active_template_id: string | null;
   current_day_index: number;
+  dashboard_widgets: DashboardWidget[] | null;
 }
 
 // For offline sync
@@ -91,3 +93,22 @@ export interface WorkoutStats {
   workoutsThisWeek: number;
   currentStreak: number;
 }
+
+export interface VolumeDataPoint {
+  date: string;
+  volume: number;
+  minutes: number;
+}
+
+export interface VolumeByCategory {
+  push: number;
+  pull: number;
+  legs: number;
+  other: number;
+}
+
+export type DashboardWidget =
+  | "stats"
+  | "volume"
+  | "chart"
+  | "recentWorkouts";

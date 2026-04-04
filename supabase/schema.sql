@@ -53,8 +53,10 @@ create table template_day_exercises (
 -- User profile & schedule state
 create table user_profiles (
   id uuid primary key references auth.users(id),
+  display_name text,
   active_template_id uuid references templates(id),
   current_day_index integer default 0,
+  dashboard_widgets jsonb,
   created_at timestamptz default now()
 );
 

@@ -6,14 +6,13 @@ import {
   useTemplateDays,
   useTemplates,
 } from "../hooks/useData";
-import { useWorkoutSessions, useWorkoutStats } from "../hooks/useWorkout";
+import { useWorkoutSessions, useWorkoutStats, useVolumeStats } from "../hooks/useWorkout";
 import {
   Dumbbell,
   Clock,
   Flame,
   TrendingUp,
   ChevronRight,
-  LogOut,
   CalendarDays,
   Timer,
   List,
@@ -22,17 +21,22 @@ import {
   Sun,
   Moon,
   Monitor,
+  Settings,
 } from "lucide-react";
 import { syncPendingChanges } from "../lib/sync";
 import { supabase } from "../lib/supabase";
-import type { TemplateDay } from "../types";
+import type { DashboardWidget, TemplateDay } from "../types";
 import LoadingScreen from "../components/LoadingScreen";
 import PumpkinLogo from "../components/PumpkinLogo";
+import VolumeChart from "../components/VolumeChart";
+import VolumeSummary from "../components/VolumeSummary";
 import { useTheme } from "../contexts/ThemeContext";
+
+const DEFAULT_WIDGETS: DashboardWidget[] = ["stats", "volume", "chart", "recentWorkouts"];
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { mode, setMode } = useTheme();
   const { profile, loading: profileLoading, updateProfile } = useUserProfile();
   const {
@@ -49,6 +53,13 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [showDayPicker, setShowDayPicker] = useState(false);
   const [blankName, setBlankName] = useState("");
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [promptName, setPromptName] = useState("");
+  const [volumeRange, setVolumeRange] = useState<"week" | "month" | "year">("month");
+  const { chartData, volumeByCategory, totalVolume, loading: volumeLoading } =
+    useVolumeStats(volumeRange);
+  const widgets: DashboardWidget[] =
+    profile?.dashboard_widgets ?? DEFAULT_WIDGETS;
   const [allTemplateDays, setAllTemplateDays] = useState<
     Record<string, TemplateDay[]>
   >({});
@@ -89,8 +100,31 @@ export default function Dashboard() {
     return () => window.removeEventListener("online", handleOnline);
   }, [reloadSessions]);
 
+  // Show first-login name prompt once profile loads without a display_name
+  useEffect(() => {
+    if (
+      !profileLoading &&
+      profile &&
+      profile.display_name === null &&
+      !sessionStorage.getItem("name-prompt-dismissed")
+    ) {
+      setShowNamePrompt(true);
+    }
+  }, [profileLoading, profile]);
+
+  const handleSetName = async () => {
+    const trimmed = promptName.trim();
+    if (trimmed) {
+      await updateProfile({ display_name: trimmed });
+    }
+    sessionStorage.setItem("name-prompt-dismissed", "1");
+    setShowNamePrompt(false);
+  };
+
   const pageLoading = profileLoading || sessionsLoading || daysLoading;
   if (pageLoading) return <LoadingScreen />;
+
+  const greeting = profile?.display_name ?? user?.email?.split("@")[0] ?? "";
 
   const currentDay = days[profile?.current_day_index ?? 0];
   const activeSession = sessions.find((s) => !s.finished_at);
@@ -172,11 +206,11 @@ export default function Dashboard() {
             )}
           </button>
           <button
-            onClick={signOut}
+            onClick={() => navigate("/settings")}
             className="text-gray-400 hover:text-white transition p-2"
-            title="Sign out"
+            title="Settings"
           >
-            <LogOut className="w-5 h-5" />
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </header>
@@ -185,7 +219,7 @@ export default function Dashboard() {
         {/* Welcome */}
         <div>
           <h1 className="text-2xl font-bold text-white">
-            Hey{user?.email ? `, ${user.email.split("@")[0]}` : ""}! 💪
+            Hey{greeting ? `, ${greeting}` : ""}! 💪
           </h1>
           <p className="text-gray-400 text-sm mt-1">
             {activeSession
@@ -343,7 +377,7 @@ export default function Dashboard() {
         )}
 
         {/* Stats Grid */}
-        {!statsLoading && stats && (
+        {widgets.includes("stats") && !statsLoading && stats && (
           <div className="grid grid-cols-2 gap-3">
             <StatCard
               icon={<Flame className="w-5 h-5 text-orange-400" />}
@@ -374,7 +408,40 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Volume breakdown */}
+        {widgets.includes("volume") && !volumeLoading && (
+          <VolumeSummary
+            volumeByCategory={volumeByCategory}
+            totalVolume={totalVolume}
+          />
+        )}
+
+        {/* Progress chart */}
+        {widgets.includes("chart") && !volumeLoading && (
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <div className="flex bg-surface rounded-lg overflow-hidden text-xs">
+                {(["week", "month", "year"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setVolumeRange(r)}
+                    className={`px-3 py-1.5 capitalize transition ${
+                      volumeRange === r
+                        ? "bg-primary/20 text-primary"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <VolumeChart data={chartData} />
+          </div>
+        )}
+
         {/* Recent Workouts */}
+        {widgets.includes("recentWorkouts") && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-white">
@@ -419,6 +486,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        )}
 
         {/* Quick actions */}
         <div className="flex gap-3">
@@ -434,8 +502,58 @@ export default function Dashboard() {
           >
             Exercises
           </button>
+          <button
+            onClick={() => navigate("/settings")}
+            className="flex-1 bg-surface hover:bg-surface-light rounded-xl py-3 text-sm text-gray-300 transition"
+          >
+            Settings
+          </button>
         </div>
       </main>
+
+      {/* First-login name prompt */}
+      {showNamePrompt && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="text-center">
+              <p className="text-2xl mb-1">🎃</p>
+              <h3 className="text-white font-semibold text-lg">
+                Welcome to Pumpin!
+              </h3>
+              <p className="text-gray-400 text-sm mt-1">
+                What should we call you?
+              </p>
+            </div>
+            <input
+              type="text"
+              value={promptName}
+              onChange={(e) => setPromptName(e.target.value)}
+              placeholder={user?.email?.split("@")[0] ?? "Your name"}
+              className="w-full bg-background rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+              maxLength={50}
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleSetName()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("name-prompt-dismissed", "1");
+                  setShowNamePrompt(false);
+                }}
+                className="flex-1 bg-background text-gray-300 font-medium py-2.5 rounded-xl text-sm"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleSetName}
+                className="flex-1 bg-primary text-white font-medium py-2.5 rounded-xl text-sm"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
