@@ -210,7 +210,7 @@ export default function WorkoutSessionPage() {
       await updateProfile({ current_day_index: nextIndex });
     }
 
-    navigate("/");
+    navigate(`/workout/${sessionId}/summary`, { replace: true });
   };
 
   const handleAddExercise = async (exerciseId: string) => {

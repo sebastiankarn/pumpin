@@ -485,7 +485,7 @@ export default function Dashboard() {
                   .map((session) => (
                     <button
                       key={session.id}
-                      onClick={() => navigate(`/workout/${session.id}`)}
+                      onClick={() => navigate(`/workout/${session.id}/summary`)}
                       className="w-full bg-surface rounded-xl p-4 flex items-center gap-3 text-left active:bg-surface-light transition"
                     >
                       <div className="flex-1">

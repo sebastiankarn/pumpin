@@ -8,6 +8,7 @@ import HistoryPage from "./pages/HistoryPage";
 import ExercisesPage from "./pages/ExercisesPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import SettingsPage from "./pages/SettingsPage";
+import WorkoutSummaryPage from "./pages/WorkoutSummaryPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -60,6 +61,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <WorkoutSessionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workout/:sessionId/summary"
+              element={
+                <ProtectedRoute>
+                  <WorkoutSummaryPage />
                 </ProtectedRoute>
               }
             />
