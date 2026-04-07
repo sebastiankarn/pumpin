@@ -32,7 +32,7 @@ import type {
   StatsConfig,
 } from "../types";
 import LoadingScreen from "../components/LoadingScreen";
-import PumpkinLogo from "../components/PumpkinLogo";
+import PumpkinIcon from "../components/PumpkinIcon";
 import VolumeChart from "../components/VolumeChart";
 import VolumeSummary from "../components/VolumeSummary";
 import BodyWeightWidget from "../components/BodyWeightWidget";
@@ -208,7 +208,7 @@ export default function Dashboard() {
       <header className="sticky top-0 z-10 glass-header px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <PumpkinLogo className="w-7 h-7 text-primary" />
+            <PumpkinIcon className="w-9 h-9 text-primary" />
             <span className="font-bold text-lg text-white">Pumpin</span>
           </div>
           <div className="flex items-center gap-2">
