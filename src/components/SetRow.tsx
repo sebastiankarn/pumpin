@@ -97,7 +97,6 @@ export default function SetRow({
   };
 
   const isCardio = exerciseType === "cardio";
-  const isDuration = exerciseType === "duration";
 
   return (
     <div className="space-y-1">
