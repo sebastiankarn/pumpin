@@ -1,3 +1,5 @@
+export type ExerciseType = "strength" | "cardio";
+
 export interface Exercise {
   id: string;
   name: string;
@@ -6,6 +8,7 @@ export interface Exercise {
   video_url: string | null;
   created_by: string | null;
   is_global: boolean;
+  exercise_type: ExerciseType;
 }
 
 export interface Template {
@@ -65,6 +68,11 @@ export interface SessionSet {
   rpe: number | null;
   rest_seconds: number | null;
   notes: string | null;
+  // Cardio fields
+  duration_seconds: number | null;
+  distance_km: number | null;
+  calories: number | null;
+  avg_heart_rate: number | null;
 }
 
 export interface UserProfile {
@@ -73,6 +81,7 @@ export interface UserProfile {
   active_template_id: string | null;
   current_day_index: number;
   dashboard_widgets: DashboardWidget[] | null;
+  weight_unit: "kg" | "lbs" | null;
 }
 
 // For offline sync
@@ -107,8 +116,12 @@ export interface VolumeByCategory {
   other: number;
 }
 
-export type DashboardWidget =
-  | "stats"
-  | "volume"
-  | "chart"
-  | "recentWorkouts";
+export type DashboardWidget = "stats" | "volume" | "chart" | "recentWorkouts" | "bodyWeight";
+
+export interface BodyWeightLog {
+  id: string;
+  user_id: string;
+  weight: number;
+  unit: "kg" | "lbs";
+  logged_at: string;
+}

@@ -9,11 +9,7 @@ import {
 } from "recharts";
 import type { VolumeDataPoint } from "../types";
 
-export default function VolumeChart({
-  data,
-}: {
-  data: VolumeDataPoint[];
-}) {
+export default function VolumeChart({ data }: { data: VolumeDataPoint[] }) {
   const [metric, setMetric] = useState<"volume" | "minutes">("volume");
 
   if (data.length === 0) {

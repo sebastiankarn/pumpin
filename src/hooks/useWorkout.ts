@@ -390,13 +390,23 @@ export function useVolumeStats(range: "week" | "month" | "year" = "month") {
 
       // Build per-session volume + category totals
       const sessionVolumeMap = new Map<string, number>();
-      const catTotals: VolumeByCategory = { push: 0, pull: 0, legs: 0, other: 0 };
+      const catTotals: VolumeByCategory = {
+        push: 0,
+        pull: 0,
+        legs: 0,
+        other: 0,
+      };
 
       for (const se of exerciseRows ?? []) {
-        const exerciseData = se.exercise as unknown as { muscle_group: string } | null;
+        const exerciseData = se.exercise as unknown as {
+          muscle_group: string;
+        } | null;
         const mg = exerciseData?.muscle_group ?? "";
         const cat = categorize(mg);
-        const sets = (se.sets ?? []) as { weight: number | null; reps: number | null }[];
+        const sets = (se.sets ?? []) as {
+          weight: number | null;
+          reps: number | null;
+        }[];
         let vol = 0;
         for (const s of sets) {
           if (s.weight && s.reps) vol += s.weight * s.reps;
@@ -417,7 +427,8 @@ export function useVolumeStats(range: "week" | "month" | "year" = "month") {
         minutes: s.duration_minutes ?? 0,
       }));
 
-      const total = catTotals.push + catTotals.pull + catTotals.legs + catTotals.other;
+      const total =
+        catTotals.push + catTotals.pull + catTotals.legs + catTotals.other;
 
       setChartData(points);
       setVolumeByCategory(catTotals);
@@ -481,4 +492,77 @@ export function usePreviousSession(
   }, [user, templateDayId, currentSessionId]);
 
   return { previousExercises, loading };
+}
+
+/**
+ * For each exercise in the current session, load all historical sets from
+ * *finished* sessions (excluding the current one) and build a map of the
+ * best weight achieved at each rep count or higher.
+ *
+ * Returns `isPR(exerciseId, weight, reps) → boolean`.
+ */
+export function usePersonalRecords(
+  sessionId: string | null,
+  exerciseIds: string[],
+) {
+  const { user } = useAuth();
+  // Map: exerciseId → array of { weight, reps } from all past finished sessions
+  const [history, setHistory] = useState<
+    Map<string, { weight: number; reps: number }[]>
+  >(new Map());
+
+  useEffect(() => {
+    if (!user || !sessionId || exerciseIds.length === 0) return;
+
+    (async () => {
+      // Get all finished session IDs except current
+      const { data: finishedSessions } = await supabase
+        .from("workout_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .not("finished_at", "is", null)
+        .neq("id", sessionId);
+
+      if (!finishedSessions || finishedSessions.length === 0) {
+        setHistory(new Map());
+        return;
+      }
+
+      const finishedIds = finishedSessions.map((s) => s.id);
+
+      // Get all session_exercises for those sessions that match our exercise IDs
+      const { data: rows } = await supabase
+        .from("session_exercises")
+        .select("exercise_id, sets:session_sets(weight, reps)")
+        .in("session_id", finishedIds)
+        .in("exercise_id", exerciseIds);
+
+      const map = new Map<string, { weight: number; reps: number }[]>();
+      for (const row of rows ?? []) {
+        const sets = (row.sets ?? []) as { weight: number | null; reps: number | null }[];
+        const entries = map.get(row.exercise_id) ?? [];
+        for (const s of sets) {
+          if (s.weight && s.reps) {
+            entries.push({ weight: s.weight, reps: s.reps });
+          }
+        }
+        map.set(row.exercise_id, entries);
+      }
+      setHistory(map);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sessionId, exerciseIds.join(",")]);
+
+  const isPR = useCallback(
+    (exerciseId: string, weight: number | null, reps: number | null): boolean => {
+      if (!weight || !reps || weight <= 0 || reps <= 0) return false;
+      const past = history.get(exerciseId);
+      if (!past || past.length === 0) return false; // no history = not a PR (first time)
+      // PR = no previous set had this weight or more at this many reps or more
+      return !past.some((p) => p.weight >= weight && p.reps >= reps);
+    },
+    [history],
+  );
+
+  return { isPR };
 }

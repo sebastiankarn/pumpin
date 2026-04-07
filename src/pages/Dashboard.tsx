@@ -6,7 +6,11 @@ import {
   useTemplateDays,
   useTemplates,
 } from "../hooks/useData";
-import { useWorkoutSessions, useWorkoutStats, useVolumeStats } from "../hooks/useWorkout";
+import {
+  useWorkoutSessions,
+  useWorkoutStats,
+  useVolumeStats,
+} from "../hooks/useWorkout";
 import {
   Dumbbell,
   Clock,
@@ -30,9 +34,16 @@ import LoadingScreen from "../components/LoadingScreen";
 import PumpkinLogo from "../components/PumpkinLogo";
 import VolumeChart from "../components/VolumeChart";
 import VolumeSummary from "../components/VolumeSummary";
+import BodyWeightWidget from "../components/BodyWeightWidget";
+import { useBodyWeight } from "../hooks/useBodyWeight";
 import { useTheme } from "../contexts/ThemeContext";
 
-const DEFAULT_WIDGETS: DashboardWidget[] = ["stats", "volume", "chart", "recentWorkouts"];
+const DEFAULT_WIDGETS: DashboardWidget[] = [
+  "stats",
+  "volume",
+  "chart",
+  "recentWorkouts",
+];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -55,9 +66,17 @@ export default function Dashboard() {
   const [blankName, setBlankName] = useState("");
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [promptName, setPromptName] = useState("");
-  const [volumeRange, setVolumeRange] = useState<"week" | "month" | "year">("month");
-  const { chartData, volumeByCategory, totalVolume, loading: volumeLoading } =
-    useVolumeStats(volumeRange);
+  const [volumeRange, setVolumeRange] = useState<"week" | "month" | "year">(
+    "month",
+  );
+  const {
+    chartData,
+    volumeByCategory,
+    totalVolume,
+    loading: volumeLoading,
+  } = useVolumeStats(volumeRange);
+  const { logs: bodyWeightLogs, addLog: addBodyWeightLog } = useBodyWeight();
+  const weightUnit = profile?.weight_unit ?? "kg";
   const widgets: DashboardWidget[] =
     profile?.dashboard_widgets ?? DEFAULT_WIDGETS;
   const [allTemplateDays, setAllTemplateDays] = useState<
@@ -442,50 +461,59 @@ export default function Dashboard() {
 
         {/* Recent Workouts */}
         {widgets.includes("recentWorkouts") && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-white">
-              Recent Workouts
-            </h2>
-            <button
-              onClick={() => navigate("/history")}
-              className="text-primary text-sm"
-            >
-              See all
-            </button>
-          </div>
-          {sessions.filter((s) => s.finished_at).length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              No completed workouts yet. Start your first one!
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {sessions
-                .filter((s) => s.finished_at)
-                .slice(0, 5)
-                .map((session) => (
-                  <button
-                    key={session.id}
-                    onClick={() => navigate(`/workout/${session.id}`)}
-                    className="w-full bg-surface rounded-xl p-4 flex items-center gap-3 text-left active:bg-surface-light transition"
-                  >
-                    <div className="flex-1">
-                      <p className="text-white font-medium">
-                        {session.name ??
-                          session.template_day?.name ??
-                          "Workout"}
-                      </p>
-                      <p className="text-gray-500 text-xs">
-                        {new Date(session.started_at).toLocaleDateString()} ·{" "}
-                        {session.duration_minutes} min
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                  </button>
-                ))}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-white">
+                Recent Workouts
+              </h2>
+              <button
+                onClick={() => navigate("/history")}
+                className="text-primary text-sm"
+              >
+                See all
+              </button>
             </div>
-          )}
-        </div>
+            {sessions.filter((s) => s.finished_at).length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                No completed workouts yet. Start your first one!
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {sessions
+                  .filter((s) => s.finished_at)
+                  .slice(0, 5)
+                  .map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => navigate(`/workout/${session.id}`)}
+                      className="w-full bg-surface rounded-xl p-4 flex items-center gap-3 text-left active:bg-surface-light transition"
+                    >
+                      <div className="flex-1">
+                        <p className="text-white font-medium">
+                          {session.name ??
+                            session.template_day?.name ??
+                            "Workout"}
+                        </p>
+                        <p className="text-gray-500 text-xs">
+                          {new Date(session.started_at).toLocaleDateString()} ·{" "}
+                          {session.duration_minutes} min
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Body Weight */}
+        {widgets.includes("bodyWeight") && (
+          <BodyWeightWidget
+            logs={bodyWeightLogs}
+            unit={weightUnit}
+            onAdd={addBodyWeightLog}
+          />
         )}
 
         {/* Quick actions */}

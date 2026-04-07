@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useExercises } from "../hooks/useData";
 import { ArrowLeft, Plus, Search, Pencil, Trash2 } from "lucide-react";
-import type { Exercise } from "../types";
+import type { Exercise, ExerciseType } from "../types";
 
 export default function ExercisesPage() {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function ExercisesPage() {
   const [newMuscle, setNewMuscle] = useState("");
   const [newEquipment, setNewEquipment] = useState("");
   const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newType, setNewType] = useState<ExerciseType>("strength");
 
   const filtered = exercises.filter(
     (e) =>
@@ -33,11 +34,13 @@ export default function ExercisesPage() {
       muscle_group: newMuscle.trim(),
       equipment: newEquipment.trim() || null,
       video_url: newVideoUrl.trim() || null,
+      exercise_type: newType,
     });
     setNewName("");
     setNewMuscle("");
     setNewEquipment("");
     setNewVideoUrl("");
+    setNewType("strength");
     setShowAdd(false);
   };
 
@@ -47,6 +50,7 @@ export default function ExercisesPage() {
     setNewMuscle(exercise.muscle_group);
     setNewEquipment(exercise.equipment ?? "");
     setNewVideoUrl(exercise.video_url ?? "");
+    setNewType(exercise.exercise_type ?? "strength");
   };
 
   const handleEdit = async () => {
@@ -56,6 +60,7 @@ export default function ExercisesPage() {
       muscle_group: newMuscle.trim(),
       equipment: newEquipment.trim() || null,
       video_url: newVideoUrl.trim() || null,
+      exercise_type: newType,
     });
     cancelEdit();
   };
@@ -70,6 +75,7 @@ export default function ExercisesPage() {
     setNewMuscle("");
     setNewEquipment("");
     setNewVideoUrl("");
+    setNewType("strength");
   };
 
   const exerciseForm = (
@@ -115,6 +121,28 @@ export default function ExercisesPage() {
         className="w-full bg-surface-light rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
         placeholder="YouTube link (optional)"
       />
+      <div className="flex gap-2">
+        <button
+          onClick={() => setNewType("strength")}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+            newType === "strength"
+              ? "bg-primary/20 text-primary"
+              : "bg-surface-light text-gray-400"
+          }`}
+        >
+          Strength
+        </button>
+        <button
+          onClick={() => setNewType("cardio")}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+            newType === "cardio"
+              ? "bg-primary/20 text-primary"
+              : "bg-surface-light text-gray-400"
+          }`}
+        >
+          Cardio
+        </button>
+      </div>
       <div className="flex gap-2">
         <button
           onClick={onCancel}
@@ -204,6 +232,11 @@ export default function ExercisesPage() {
                               {exercise.name}
                             </p>
                             <div className="flex items-center gap-2">
+                              {exercise.exercise_type === "cardio" && (
+                                <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-full">
+                                  cardio
+                                </span>
+                              )}
                               {exercise.equipment && (
                                 <p className="text-gray-500 text-xs">
                                   {exercise.equipment}

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   useSessionExercises,
   usePreviousSession,
   useWorkoutSessions,
+  usePersonalRecords,
 } from "../hooks/useWorkout";
 import {
   useExercises,
@@ -235,6 +236,12 @@ export default function WorkoutSessionPage() {
   const isFinished = !!session?.finished_at;
   const readOnly = isFinished && !editing;
 
+  const exerciseIds = useMemo(
+    () => sessionExercises.map((se) => se.exercise_id),
+    [sessionExercises],
+  );
+  const { isPR } = usePersonalRecords(sessionId ?? null, exerciseIds);
+
   if (!session || exercisesLoading || populating) return <LoadingScreen />;
 
   return (
@@ -282,7 +289,11 @@ export default function WorkoutSessionPage() {
               onClick={() => setEditing(!editing)}
               className={`p-2 -mr-2 ${editing ? "text-primary" : "text-gray-400"}`}
             >
-              {editing ? <Check className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+              {editing ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <Pencil className="w-5 h-5" />
+              )}
             </button>
           ) : (
             <div className="w-9" />
@@ -312,6 +323,7 @@ export default function WorkoutSessionPage() {
               onAddSet={addSetOptimistic}
               onRemoveSet={removeSetOptimistic}
               onUpdateSet={updateSetOptimistic}
+              isPR={isPR}
             />
           );
         })}
@@ -412,6 +424,7 @@ function ExerciseCard({
   onAddSet,
   onRemoveSet,
   onUpdateSet,
+  isPR,
 }: {
   sessionExercise: SessionExercise;
   previousSets: SessionSet[];
@@ -424,10 +437,13 @@ function ExerciseCard({
   onAddSet: (sessionExerciseId: string, newSet: SessionSet) => void;
   onRemoveSet: (sessionExerciseId: string, setId: string) => void;
   onUpdateSet: (setId: string, updates: Partial<SessionSet>) => void;
+  isPR: (exerciseId: string, weight: number | null, reps: number | null) => boolean;
 }) {
   const sets = sessionExercise.sets ?? [];
   const [showVideo, setShowVideo] = useState(false);
   const videoUrl = sessionExercise.exercise?.video_url;
+  const exType = sessionExercise.exercise?.exercise_type ?? "strength";
+  const isCardio = exType === "cardio";
 
   const getYouTubeId = (url: string): string | null => {
     const match = url.match(
@@ -506,10 +522,21 @@ function ExerciseCard({
               <div className="space-y-1">
                 <div className="grid grid-cols-12 gap-1 text-[10px] text-gray-500 px-1">
                   <span className="col-span-1">#</span>
-                  <span className="col-span-2">kg</span>
-                  <span className="col-span-2">Reps</span>
-                  <span className="col-span-2">RPE</span>
-                  <span className="col-span-2">Rest</span>
+                  {isCardio ? (
+                    <>
+                      <span className="col-span-2">Min</span>
+                      <span className="col-span-2">km</span>
+                      <span className="col-span-2">kcal</span>
+                      <span className="col-span-2">HR</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="col-span-2">kg</span>
+                      <span className="col-span-2">Reps</span>
+                      <span className="col-span-2">RPE</span>
+                      <span className="col-span-2">Rest</span>
+                    </>
+                  )}
                   <span className="col-span-3">Note</span>
                 </div>
                 {previousSets.map((ps, i) => (
@@ -518,12 +545,25 @@ function ExerciseCard({
                     className="grid grid-cols-12 gap-1 text-xs text-gray-400 bg-background rounded px-1 py-1"
                   >
                     <span className="col-span-1 text-gray-500">{i + 1}</span>
-                    <span className="col-span-2">{ps.weight ?? "–"}</span>
-                    <span className="col-span-2">{ps.reps ?? "–"}</span>
-                    <span className="col-span-2">{ps.rpe ?? "–"}</span>
-                    <span className="col-span-2">
-                      {ps.rest_seconds ? `${ps.rest_seconds}s` : "–"}
-                    </span>
+                    {isCardio ? (
+                      <>
+                        <span className="col-span-2">
+                          {ps.duration_seconds ? Math.round(ps.duration_seconds / 60) : "–"}
+                        </span>
+                        <span className="col-span-2">{ps.distance_km ?? "–"}</span>
+                        <span className="col-span-2">{ps.calories ?? "–"}</span>
+                        <span className="col-span-2">{ps.avg_heart_rate ?? "–"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="col-span-2">{ps.weight ?? "–"}</span>
+                        <span className="col-span-2">{ps.reps ?? "–"}</span>
+                        <span className="col-span-2">{ps.rpe ?? "–"}</span>
+                        <span className="col-span-2">
+                          {ps.rest_seconds ? `${ps.rest_seconds}s` : "–"}
+                        </span>
+                      </>
+                    )}
                     <span className="col-span-3 truncate">
                       {ps.notes || "–"}
                     </span>
@@ -539,10 +579,21 @@ function ExerciseCard({
             {sets.length > 0 && (
               <div className="grid grid-cols-12 gap-1 text-xs text-gray-500 px-1">
                 <span className="col-span-1">#</span>
-                <span className="col-span-2">kg</span>
-                <span className="col-span-2">Reps</span>
-                <span className="col-span-2">RPE</span>
-                <span className="col-span-2">Rest</span>
+                {isCardio ? (
+                  <>
+                    <span className="col-span-2">Min</span>
+                    <span className="col-span-2">km</span>
+                    <span className="col-span-2">kcal</span>
+                    <span className="col-span-2">HR</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="col-span-2">kg</span>
+                    <span className="col-span-2">Reps</span>
+                    <span className="col-span-2">RPE</span>
+                    <span className="col-span-2">Rest</span>
+                  </>
+                )}
                 <span className="col-span-3">Note</span>
               </div>
             )}
@@ -554,6 +605,8 @@ function ExerciseCard({
                 disabled={isFinished}
                 onRemoveSet={onRemoveSet}
                 onUpdateSet={onUpdateSet}
+                isPR={!isCardio && isPR(sessionExercise.exercise_id, set.weight, set.reps)}
+                exerciseType={exType}
               />
             ))}
           </div>
@@ -610,6 +663,10 @@ function AddSetButton({
       rpe: null,
       rest_seconds: null,
       notes: null,
+      duration_seconds: previousSet?.duration_seconds ?? null,
+      distance_km: previousSet?.distance_km ?? null,
+      calories: previousSet?.calories ?? null,
+      avg_heart_rate: previousSet?.avg_heart_rate ?? null,
     };
 
     // Optimistic: update UI immediately

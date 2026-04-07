@@ -6,12 +6,18 @@ import { useTheme } from "../contexts/ThemeContext";
 import { ArrowLeft, Sun, Moon, Monitor, LogOut, Save } from "lucide-react";
 import type { DashboardWidget } from "../types";
 
-const DEFAULT_WIDGETS: DashboardWidget[] = ["stats", "volume", "chart", "recentWorkouts"];
+const DEFAULT_WIDGETS: DashboardWidget[] = [
+  "stats",
+  "volume",
+  "chart",
+  "recentWorkouts",
+];
 const WIDGET_LABELS: Record<DashboardWidget, string> = {
   stats: "Stats Grid",
   volume: "Volume Breakdown",
   chart: "Progress Chart",
   recentWorkouts: "Recent Workouts",
+  bodyWeight: "Body Weight Tracker",
 };
 
 export default function SettingsPage() {
@@ -43,7 +49,9 @@ export default function SettingsPage() {
 
   const toggleWidget = (w: DashboardWidget) => {
     setWidgets((prev) => {
-      const next = prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w];
+      const next = prev.includes(w)
+        ? prev.filter((x) => x !== w)
+        : [...prev, w];
       updateProfile({ dashboard_widgets: next });
       return next;
     });
@@ -88,9 +96,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="text-xs text-gray-400 block mb-1">Email</label>
-              <p className="text-gray-500 text-sm px-3 py-2.5">
-                {user?.email}
-              </p>
+              <p className="text-gray-500 text-sm px-3 py-2.5">{user?.email}</p>
             </div>
             <button
               onClick={handleSave}
@@ -159,6 +165,30 @@ export default function SettingsPage() {
                 </div>
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* Units */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+            Units
+          </h2>
+          <div className="bg-surface rounded-xl p-4">
+            <div className="flex gap-2">
+              {(["kg", "lbs"] as const).map((u) => (
+                <button
+                  key={u}
+                  onClick={() => updateProfile({ weight_unit: u })}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                    (profile?.weight_unit ?? "kg") === u
+                      ? "bg-primary/20 text-primary"
+                      : "bg-background text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 

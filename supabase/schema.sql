@@ -16,6 +16,7 @@ create table exercises (
   name text not null,
   muscle_group text not null,
   equipment text,
+  exercise_type text not null default 'strength',
   created_by uuid references auth.users(id),
   is_global boolean default false,
   created_at timestamptz default now()
@@ -57,6 +58,7 @@ create table user_profiles (
   active_template_id uuid references templates(id),
   current_day_index integer default 0,
   dashboard_widgets jsonb,
+  weight_unit text,
   created_at timestamptz default now()
 );
 
@@ -89,7 +91,21 @@ create table session_sets (
   reps integer,
   rpe numeric,
   rest_seconds integer,
-  notes text
+  notes text,
+  -- Cardio fields
+  duration_seconds integer,
+  distance_km numeric,
+  calories integer,
+  avg_heart_rate integer
+);
+
+-- Body weight log
+create table body_weight_logs (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references auth.users(id),
+  weight numeric not null,
+  unit text not null,
+  logged_at timestamptz default now()
 );
 
 -- ============================================
@@ -101,6 +117,7 @@ create index idx_workout_sessions_template_day on workout_sessions(template_day_
 create index idx_session_exercises_session on session_exercises(session_id);
 create index idx_session_sets_exercise on session_sets(session_exercise_id);
 create index idx_template_days_template on template_days(template_id);
+create index idx_body_weight_logs_user on body_weight_logs(user_id, logged_at desc);
 
 -- ============================================
 -- ROW LEVEL SECURITY
@@ -114,6 +131,7 @@ alter table user_profiles enable row level security;
 alter table workout_sessions enable row level security;
 alter table session_exercises enable row level security;
 alter table session_sets enable row level security;
+alter table body_weight_logs enable row level security;
 
 -- Exercises: anyone can read, authenticated users can insert
 create policy "Exercises are viewable by everyone"
@@ -318,6 +336,16 @@ create policy "Users can delete own session sets"
       and workout_sessions.user_id = auth.uid()
     )
   );
+
+-- Body weight logs: own data only
+create policy "Users can view own body weight logs"
+  on body_weight_logs for select using (user_id = auth.uid());
+
+create policy "Users can insert own body weight logs"
+  on body_weight_logs for insert with check (user_id = auth.uid());
+
+create policy "Users can delete own body weight logs"
+  on body_weight_logs for delete using (user_id = auth.uid());
 
 -- ============================================
 -- AUTO-CREATE USER PROFILE ON SIGNUP

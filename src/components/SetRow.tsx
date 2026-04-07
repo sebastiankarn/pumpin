@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Trash2 } from "lucide-react";
-import type { SessionSet } from "../types";
+import { Trash2, Trophy } from "lucide-react";
+import type { ExerciseType, SessionSet } from "../types";
 
 interface SetRowProps {
   set: SessionSet;
@@ -9,6 +9,8 @@ interface SetRowProps {
   disabled: boolean;
   onRemoveSet: (sessionExerciseId: string, setId: string) => void;
   onUpdateSet: (setId: string, updates: Partial<SessionSet>) => void;
+  isPR?: boolean;
+  exerciseType?: ExerciseType;
 }
 
 export default function SetRow({
@@ -17,11 +19,24 @@ export default function SetRow({
   disabled,
   onRemoveSet,
   onUpdateSet,
+  isPR = false,
+  exerciseType = "strength",
 }: SetRowProps) {
+  // Strength fields
   const [weight, setWeight] = useState(set.weight?.toString() ?? "");
   const [reps, setReps] = useState(set.reps?.toString() ?? "");
   const [rpe, setRpe] = useState(set.rpe?.toString() ?? "");
   const [rest, setRest] = useState(set.rest_seconds?.toString() ?? "");
+  // Cardio fields
+  const [duration, setDuration] = useState(
+    set.duration_seconds ? Math.round(set.duration_seconds / 60).toString() : "",
+  );
+  const [distance, setDistance] = useState(set.distance_km?.toString() ?? "");
+  const [calories, setCalories] = useState(set.calories?.toString() ?? "");
+  const [heartRate, setHeartRate] = useState(
+    set.avg_heart_rate?.toString() ?? "",
+  );
+  // Shared
   const [notes, setNotes] = useState(set.notes ?? "");
   const [showNotes, setShowNotes] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -72,72 +87,165 @@ export default function SetRow({
   const inputClasses =
     "bg-background rounded px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary w-full disabled:opacity-50";
 
+  const isCardio = exerciseType === "cardio";
+
   return (
     <div className="space-y-1">
       <div className="grid grid-cols-12 gap-1 items-center">
-        <span className="col-span-1 text-gray-500 text-xs text-center">
-          {set.set_index + 1}
+        <span className="col-span-1 text-gray-500 text-xs text-center relative">
+          {isPR ? (
+            <Trophy className="w-3.5 h-3.5 text-yellow-400 mx-auto" />
+          ) : (
+            set.set_index + 1
+          )}
         </span>
-        <div className="col-span-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            value={weight}
-            disabled={disabled}
-            onChange={(e) => {
-              setWeight(e.target.value);
-              save({
-                weight: e.target.value ? parseFloat(e.target.value) : null,
-              });
-            }}
-            className={inputClasses}
-            placeholder="0"
-          />
-        </div>
-        <div className="col-span-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            value={reps}
-            disabled={disabled}
-            onChange={(e) => {
-              setReps(e.target.value);
-              save({ reps: e.target.value ? parseInt(e.target.value) : null });
-            }}
-            className={inputClasses}
-            placeholder="0"
-          />
-        </div>
-        <div className="col-span-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            value={rpe}
-            disabled={disabled}
-            onChange={(e) => {
-              setRpe(e.target.value);
-              save({ rpe: e.target.value ? parseFloat(e.target.value) : null });
-            }}
-            className={inputClasses}
-            placeholder="—"
-          />
-        </div>
-        <div className="col-span-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            value={rest}
-            disabled={disabled}
-            onChange={(e) => {
-              setRest(e.target.value);
-              save({
-                rest_seconds: e.target.value ? parseInt(e.target.value) : null,
-              });
-            }}
-            className={inputClasses}
-            placeholder="s"
-          />
-        </div>
+
+        {isCardio ? (
+          <>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={duration}
+                disabled={disabled}
+                onChange={(e) => {
+                  setDuration(e.target.value);
+                  save({
+                    duration_seconds: e.target.value
+                      ? parseInt(e.target.value) * 60
+                      : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={distance}
+                disabled={disabled}
+                onChange={(e) => {
+                  setDistance(e.target.value);
+                  save({
+                    distance_km: e.target.value
+                      ? parseFloat(e.target.value)
+                      : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={calories}
+                disabled={disabled}
+                onChange={(e) => {
+                  setCalories(e.target.value);
+                  save({
+                    calories: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={heartRate}
+                disabled={disabled}
+                onChange={(e) => {
+                  setHeartRate(e.target.value);
+                  save({
+                    avg_heart_rate: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="—"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={weight}
+                disabled={disabled}
+                onChange={(e) => {
+                  setWeight(e.target.value);
+                  save({
+                    weight: e.target.value ? parseFloat(e.target.value) : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={reps}
+                disabled={disabled}
+                onChange={(e) => {
+                  setReps(e.target.value);
+                  save({
+                    reps: e.target.value ? parseInt(e.target.value) : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={rpe}
+                disabled={disabled}
+                onChange={(e) => {
+                  setRpe(e.target.value);
+                  save({
+                    rpe: e.target.value ? parseFloat(e.target.value) : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="—"
+              />
+            </div>
+            <div className="col-span-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={rest}
+                disabled={disabled}
+                onChange={(e) => {
+                  setRest(e.target.value);
+                  save({
+                    rest_seconds: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
+                  });
+                }}
+                className={inputClasses}
+                placeholder="s"
+              />
+            </div>
+          </>
+        )}
+
         <div className="col-span-3 flex gap-1">
           <button
             onClick={() => setShowNotes(!showNotes)}
