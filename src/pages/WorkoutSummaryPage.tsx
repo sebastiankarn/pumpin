@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionExercises, usePersonalRecords } from "../hooks/useWorkout";
+import { useUserProfile } from "../hooks/useData";
+import { useCountUp } from "../hooks/useCountUp";
 import { supabase } from "../lib/supabase";
 import {
   ArrowLeft,
   Trophy,
-  Dumbbell,
   Clock,
   Flame,
-  Hash,
-  Weight,
   Route,
   Heart,
   ChevronDown,
@@ -22,6 +21,8 @@ export default function WorkoutSummaryPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const { profile } = useUserProfile();
+  const unit = profile?.weight_unit ?? "kg";
 
   const { exercises: sessionExercises, loading: exLoading } =
     useSessionExercises(sessionId ?? null);
@@ -97,17 +98,16 @@ export default function WorkoutSummaryPage() {
     }
   }
 
-  const workoutName =
-    session.name || session.template_day?.name || "Workout";
+  const workoutName = session.name || session.template_day?.name || "Workout";
   const date = new Date(session.started_at);
 
   const formatVolume = (v: number) =>
-    v >= 1000 ? `${(v / 1000).toFixed(1)}t` : `${Math.round(v)} kg`;
+    v >= 1000 ? `${(v / 1000).toFixed(1)}t` : `${Math.round(v)} ${unit}`;
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -119,7 +119,7 @@ export default function WorkoutSummaryPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full space-y-6">
+      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full space-y-6 pb-24 stagger">
         {/* Title card */}
         <div className="text-center space-y-1">
           <h2 className="text-2xl font-bold text-white">{workoutName}</h2>
@@ -139,62 +139,20 @@ export default function WorkoutSummaryPage() {
           )}
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {strengthExercises.length > 0 && (
-            <>
-              <StatCard
-                icon={<Weight className="w-4 h-4 text-primary" />}
-                label="Total Volume"
-                value={formatVolume(totalVolume)}
-              />
-              <StatCard
-                icon={<Hash className="w-4 h-4 text-blue-400" />}
-                label="Total Sets"
-                value={String(totalSets)}
-              />
-              <StatCard
-                icon={<Flame className="w-4 h-4 text-red-400" />}
-                label="Total Reps"
-                value={String(totalReps)}
-              />
-              <StatCard
-                icon={<Dumbbell className="w-4 h-4 text-green-400" />}
-                label="Exercises"
-                value={String(strengthExercises.length)}
-              />
-            </>
-          )}
-          {cardioExercises.length > 0 && (
-            <>
-              <StatCard
-                icon={<Clock className="w-4 h-4 text-cyan-400" />}
-                label="Cardio Time"
-                value={`${Math.round(totalCardioMin)} min`}
-              />
-              <StatCard
-                icon={<Route className="w-4 h-4 text-emerald-400" />}
-                label="Distance"
-                value={`${totalDistance.toFixed(1)} km`}
-              />
-              {totalCalories > 0 && (
-                <StatCard
-                  icon={<Flame className="w-4 h-4 text-orange-400" />}
-                  label="Calories"
-                  value={String(totalCalories)}
-                />
-              )}
-            </>
-          )}
-          {prCount > 0 && (
-            <StatCard
-              icon={<Trophy className="w-4 h-4 text-yellow-400" />}
-              label="Personal Records"
-              value={String(prCount)}
-              highlight
-            />
-          )}
-        </div>
+        {/* Stats */}
+        <SummaryStatsBar
+          totalVolume={totalVolume}
+          totalSets={totalSets}
+          totalReps={totalReps}
+          exerciseCount={strengthExercises.length}
+          hasStrength={strengthExercises.length > 0}
+          totalCardioMin={totalCardioMin}
+          totalDistance={totalDistance}
+          totalCalories={totalCalories}
+          hasCardio={cardioExercises.length > 0}
+          prCount={prCount}
+          formatVolume={formatVolume}
+        />
 
         {/* Exercise breakdown */}
         <div className="space-y-3">
@@ -202,14 +160,14 @@ export default function WorkoutSummaryPage() {
             Exercise Breakdown
           </h3>
           {sessionExercises.map((se) => (
-            <ExerciseRow key={se.id} se={se} isPR={isPR} />
+            <ExerciseRow key={se.id} se={se} isPR={isPR} unit={unit} />
           ))}
         </div>
 
         {/* View full workout button */}
         <button
           onClick={() => navigate(`/workout/${sessionId}`)}
-          className="w-full bg-surface hover:bg-surface-light rounded-xl py-3 text-center text-sm font-medium text-primary transition"
+          className="w-full glass glass-hover rounded-xl py-3 text-center text-sm font-medium text-primary transition"
         >
           View Full Workout
         </button>
@@ -218,39 +176,19 @@ export default function WorkoutSummaryPage() {
   );
 }
 
-// ── Stat card ──
-function StatCard({
-  icon,
-  label,
-  value,
-  highlight,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl p-3.5 ${highlight ? "bg-yellow-400/10 ring-1 ring-yellow-400/30" : "bg-surface"}`}
-    >
-      <div className="flex items-center gap-2 mb-1">{icon}
-        <span className="text-xs text-gray-400">{label}</span>
-      </div>
-      <p className={`text-xl font-bold ${highlight ? "text-yellow-400" : "text-white"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 // ── Exercise row ──
 function ExerciseRow({
   se,
   isPR,
+  unit,
 }: {
   se: SessionExercise;
-  isPR: (exerciseId: string, weight: number | null, reps: number | null) => boolean;
+  isPR: (
+    exerciseId: string,
+    weight: number | null,
+    reps: number | null,
+  ) => boolean;
+  unit: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const ex = se.exercise;
@@ -271,7 +209,11 @@ function ExerciseRow({
       totalReps += s.reps;
       totalWeight += s.weight;
       weightCount++;
-      if (!bestSet || s.weight > bestSet.weight || (s.weight === bestSet.weight && s.reps > bestSet.reps)) {
+      if (
+        !bestSet ||
+        s.weight > bestSet.weight ||
+        (s.weight === bestSet.weight && s.reps > bestSet.reps)
+      ) {
         bestSet = { weight: s.weight, reps: s.reps };
       }
     }
@@ -295,13 +237,17 @@ function ExerciseRow({
   }
 
   return (
-    <div className="bg-surface rounded-xl p-4">
+    <div className="glass rounded-2xl p-4">
       <button
         onClick={() => setExpanded((p) => !p)}
         className="w-full flex items-center gap-2"
       >
-        {exerciseHasPR && <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />}
-        <h4 className="text-white font-medium flex-1 text-left">{ex?.name ?? "Exercise"}</h4>
+        {exerciseHasPR && (
+          <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />
+        )}
+        <h4 className="text-white font-medium flex-1 text-left">
+          {ex?.name ?? "Exercise"}
+        </h4>
         <span className="text-xs text-gray-500 mr-1">{sets.length} sets</span>
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
@@ -330,22 +276,29 @@ function ExerciseRow({
           )}
           {hrCount > 0 && (
             <span className="flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5" /> {Math.round(avgHR / hrCount)} bpm
+              <Heart className="w-3.5 h-3.5" /> {Math.round(avgHR / hrCount)}{" "}
+              bpm
             </span>
           )}
         </div>
       ) : (
         <div className="flex items-center justify-between text-sm text-gray-400 mt-2">
           <span>
-            <span className="text-white font-medium">{avgWeight} kg</span> × {totalReps} reps
+            <span className="text-white font-medium">
+              {avgWeight} {unit}
+            </span>{" "}
+            × {totalReps} reps
           </span>
-          <span className="text-xs text-gray-500">{Math.round(volume)} kg vol</span>
+          <span className="text-xs text-gray-500">
+            {Math.round(volume)} {unit} vol
+          </span>
         </div>
       )}
 
       {/* Expanded set breakdown */}
       {expanded && !isCardio && (
-        <div className="mt-3 pt-3 border-t border-gray-800 space-y-1">
+        <div className="mt-3 pt-3 space-y-1">
+          <div className="gradient-divider mb-3" />
           {sets.map((s, i) => {
             const pr = isPR(se.exercise_id, s.weight, s.reps);
             return (
@@ -357,7 +310,7 @@ function ExerciseRow({
                 <span className={pr ? "" : "ml-[18px]"}>
                   Set {i + 1}:{" "}
                   {s.weight != null && s.reps != null
-                    ? `${s.weight} kg × ${s.reps}`
+                    ? `${s.weight} ${unit} × ${s.reps}`
                     : "—"}
                   {s.rpe != null ? ` @ RPE ${s.rpe}` : ""}
                 </span>
@@ -366,9 +319,134 @@ function ExerciseRow({
           })}
           {bestSet && (
             <p className="text-xs text-gray-500 pt-1">
-              Best: <span className="text-white font-medium">{bestSet.weight} kg × {bestSet.reps}</span>
+              Best:{" "}
+              <span className="text-white font-medium">
+                {bestSet.weight} {unit} × {bestSet.reps}
+              </span>
             </p>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Summary stats bar with animated numbers ──
+function SummaryStatsBar({
+  totalVolume,
+  totalSets,
+  totalReps,
+  exerciseCount,
+  hasStrength,
+  totalCardioMin,
+  totalDistance,
+  totalCalories,
+  hasCardio,
+  prCount,
+  formatVolume,
+}: {
+  totalVolume: number;
+  totalSets: number;
+  totalReps: number;
+  exerciseCount: number;
+  hasStrength: boolean;
+  totalCardioMin: number;
+  totalDistance: number;
+  totalCalories: number;
+  hasCardio: boolean;
+  prCount: number;
+  formatVolume: (v: number) => string;
+}) {
+  const animSets = useCountUp(totalSets);
+  const animReps = useCountUp(totalReps);
+  const animExercises = useCountUp(exerciseCount);
+  const animCardioMin = useCountUp(Math.round(totalCardioMin));
+  const animCalories = useCountUp(totalCalories);
+
+  return (
+    <div className="glass glass-shimmer rounded-2xl p-5">
+      {hasStrength && (
+        <>
+          <div className="grid grid-cols-4 divide-x divide-white/5">
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-primary tabular-nums">
+                {formatVolume(totalVolume)}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                volume
+              </p>
+            </div>
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-white tabular-nums">
+                {animSets}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                sets
+              </p>
+            </div>
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-white tabular-nums">
+                {animReps}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                reps
+              </p>
+            </div>
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-white tabular-nums">
+                {animExercises}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                exercises
+              </p>
+            </div>
+          </div>
+          {(hasCardio || prCount > 0) && (
+            <div className="gradient-divider my-3" />
+          )}
+        </>
+      )}
+      {hasCardio && (
+        <>
+          <div
+            className={`grid grid-cols-${totalCalories > 0 ? 3 : 2} divide-x divide-white/5`}
+          >
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-white tabular-nums">
+                {animCardioMin}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                cardio min
+              </p>
+            </div>
+            <div className="text-center px-1">
+              <p className="text-xl font-black text-white tabular-nums">
+                {totalDistance.toFixed(1)}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                km
+              </p>
+            </div>
+            {totalCalories > 0 && (
+              <div className="text-center px-1">
+                <p className="text-xl font-black text-white tabular-nums">
+                  {animCalories}
+                </p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
+                  kcal
+                </p>
+              </div>
+            )}
+          </div>
+          {prCount > 0 && <div className="gradient-divider my-3" />}
+        </>
+      )}
+      {prCount > 0 && (
+        <div className="flex items-center justify-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-400">
+            {prCount} Personal Record{prCount !== 1 ? "s" : ""}!
+          </span>
         </div>
       )}
     </div>

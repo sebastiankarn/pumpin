@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchWithCache, mutateWithOffline } from "../lib/sync";
+import { removeCache } from "../lib/offlineDb";
 import { useAuth } from "../contexts/AuthContext";
 import type {
   WorkoutSession,
@@ -86,7 +87,27 @@ export function useWorkoutSessions() {
     );
   };
 
-  return { sessions, loading, startSession, finishSession, reload: load };
+  const deleteSession = async (sessionId: string) => {
+    // Optimistic removal
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+    // FK cascades handle session_exercises and session_sets automatically
+    await supabase.from("workout_sessions").delete().eq("id", sessionId);
+
+    // Invalidate cache so Dashboard re-fetches fresh data
+    if (user) {
+      await removeCache(`sessions-${user.id}`);
+    }
+  };
+
+  return {
+    sessions,
+    loading,
+    startSession,
+    finishSession,
+    deleteSession,
+    reload: load,
+  };
 }
 
 export function useSessionExercises(sessionId: string | null) {
@@ -127,6 +148,7 @@ export function useSessionExercises(sessionId: string | null) {
     exerciseId: string,
     orderIndex: number,
     swappedFrom?: string,
+    supersetGroup?: number | null,
   ) => {
     if (!sessionId) return;
     const newItem = {
@@ -135,6 +157,7 @@ export function useSessionExercises(sessionId: string | null) {
       exercise_id: exerciseId,
       order_index: orderIndex,
       swapped_from_exercise_id: swappedFrom || null,
+      superset_group: supersetGroup ?? null,
     };
 
     mutateWithOffline("session_exercises", "INSERT", newItem, () =>
@@ -232,27 +255,27 @@ export function useSessionExercises(sessionId: string | null) {
 export function useWorkoutStats(): {
   stats: WorkoutStats | null;
   loading: boolean;
+  reload: () => void;
 } {
   const { user } = useAuth();
   const [stats, setStats] = useState<WorkoutStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [trigger, setTrigger] = useState(0);
+  const reload = useCallback(() => setTrigger((t) => t + 1), []);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       setLoading(true);
-      const sessions = await fetchWithCache<WorkoutSession[]>(
-        `all-sessions-${user.id}`,
-        () =>
-          supabase
-            .from("workout_sessions")
-            .select("*")
-            .eq("user_id", user.id)
-            .not("finished_at", "is", null)
-            .order("started_at", { ascending: false }),
-      );
+      // Bypass cache by fetching directly
+      const { data: sessions, error } = await supabase
+        .from("workout_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .not("finished_at", "is", null)
+        .order("started_at", { ascending: false });
 
-      if (!sessions) {
+      if (error || !sessions) {
         setStats(null);
         setLoading(false);
         return;
@@ -310,13 +333,19 @@ export function useWorkoutStats(): {
           0,
         ),
         workoutsThisWeek: thisWeek.length,
+        minutesThisWeek: thisWeek.reduce(
+          (sum, s) => sum + (s.duration_minutes ?? 0),
+          0,
+        ),
+        avgDuration:
+          totalWorkouts > 0 ? Math.round(totalMinutes / totalWorkouts) : 0,
         currentStreak,
       });
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, trigger]);
 
-  return { stats, loading };
+  return { stats, loading, reload };
 }
 
 const PUSH_MUSCLES = ["chest", "shoulders", "triceps"];
@@ -539,7 +568,10 @@ export function usePersonalRecords(
 
       const map = new Map<string, { weight: number; reps: number }[]>();
       for (const row of rows ?? []) {
-        const sets = (row.sets ?? []) as { weight: number | null; reps: number | null }[];
+        const sets = (row.sets ?? []) as {
+          weight: number | null;
+          reps: number | null;
+        }[];
         const entries = map.get(row.exercise_id) ?? [];
         for (const s of sets) {
           if (s.weight && s.reps) {
@@ -554,7 +586,11 @@ export function usePersonalRecords(
   }, [user, sessionId, exerciseIds.join(",")]);
 
   const isPR = useCallback(
-    (exerciseId: string, weight: number | null, reps: number | null): boolean => {
+    (
+      exerciseId: string,
+      weight: number | null,
+      reps: number | null,
+    ): boolean => {
       if (!weight || !reps || weight <= 0 || reps <= 0) return false;
       const past = history.get(exerciseId);
       if (!past || past.length === 0) return false; // no history = not a PR (first time)

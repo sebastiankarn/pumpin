@@ -1,4 +1,4 @@
-export type ExerciseType = "strength" | "cardio";
+export type ExerciseType = "strength" | "cardio" | "duration";
 
 export interface Exercise {
   id: string;
@@ -34,6 +34,7 @@ export interface TemplateDayExercise {
   default_reps: number | null;
   default_rpe: number | null;
   default_rest_seconds: number | null;
+  superset_group: number | null;
   exercise?: Exercise;
 }
 
@@ -55,6 +56,7 @@ export interface SessionExercise {
   exercise_id: string;
   order_index: number;
   swapped_from_exercise_id: string | null;
+  superset_group: number | null;
   exercise?: Exercise;
   sets?: SessionSet[];
 }
@@ -82,6 +84,23 @@ export interface UserProfile {
   current_day_index: number;
   dashboard_widgets: DashboardWidget[] | null;
   weight_unit: "kg" | "lbs" | null;
+  weekly_goal: number | null;
+  stats_config: StatsConfig | null;
+}
+
+export type StatSlot =
+  | "streak"
+  | "weekly"
+  | "monthly"
+  | "minutes"
+  | "weeklyMinutes"
+  | "avgDuration"
+  | "totalWorkouts"
+  | "totalMinutes";
+
+export interface StatsConfig {
+  slots: StatSlot[];
+  showWeeklyRing?: boolean;
 }
 
 // For offline sync
@@ -100,6 +119,8 @@ export interface WorkoutStats {
   workoutsThisMonth: number;
   minutesThisMonth: number;
   workoutsThisWeek: number;
+  minutesThisWeek: number;
+  avgDuration: number;
   currentStreak: number;
 }
 
@@ -116,7 +137,12 @@ export interface VolumeByCategory {
   other: number;
 }
 
-export type DashboardWidget = "stats" | "volume" | "chart" | "recentWorkouts" | "bodyWeight";
+export type DashboardWidget =
+  | "stats"
+  | "volume"
+  | "chart"
+  | "recentWorkouts"
+  | "bodyWeight";
 
 export interface BodyWeightLog {
   id: string;

@@ -51,7 +51,7 @@ export default function BodyWeightWidget({
       : null;
 
   return (
-    <div className="bg-surface rounded-xl p-4 space-y-3">
+    <div className="glass glass-shimmer rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-white font-semibold text-sm">Body Weight</h3>
         {latest && (
@@ -59,7 +59,9 @@ export default function BodyWeightWidget({
             {latest.weight} {unit}
             {diff !== null && diff !== 0 && (
               <span
-                className={diff < 0 ? "text-green-400 ml-1" : "text-red-400 ml-1"}
+                className={
+                  diff < 0 ? "text-amber-400 ml-1" : "text-rose-400 ml-1"
+                }
               >
                 {diff > 0 ? "+" : ""}
                 {diff}
@@ -95,8 +97,8 @@ export default function BodyWeightWidget({
           <AreaChart data={displayLogs}>
             <defs>
               <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis
@@ -115,13 +117,13 @@ export default function BodyWeightWidget({
                 fontSize: "12px",
               }}
               labelStyle={{ color: "#9ca3af" }}
-              itemStyle={{ color: "#60a5fa" }}
+              itemStyle={{ color: "#f97316" }}
               formatter={(value) => [`${value} ${unit}`, "Weight"]}
             />
             <Area
               type="monotone"
               dataKey="weight"
-              stroke="#60a5fa"
+              stroke="#f97316"
               strokeWidth={2}
               fill="url(#colorWeight)"
             />

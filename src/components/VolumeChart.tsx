@@ -9,12 +9,18 @@ import {
 } from "recharts";
 import type { VolumeDataPoint } from "../types";
 
-export default function VolumeChart({ data }: { data: VolumeDataPoint[] }) {
+export default function VolumeChart({
+  data,
+  unit = "kg",
+}: {
+  data: VolumeDataPoint[];
+  unit?: string;
+}) {
   const [metric, setMetric] = useState<"volume" | "minutes">("volume");
 
   if (data.length === 0) {
     return (
-      <div className="bg-surface rounded-xl p-4">
+      <div className="glass rounded-2xl p-4">
         <p className="text-gray-500 text-sm text-center">
           No workout data for this period
         </p>
@@ -23,7 +29,7 @@ export default function VolumeChart({ data }: { data: VolumeDataPoint[] }) {
   }
 
   return (
-    <div className="bg-surface rounded-xl p-4 space-y-3">
+    <div className="glass glass-shimmer rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-white font-semibold text-sm">Progress</h3>
         <div className="flex bg-background rounded-lg overflow-hidden text-xs">
@@ -76,7 +82,7 @@ export default function VolumeChart({ data }: { data: VolumeDataPoint[] }) {
             itemStyle={{ color: "#f97316" }}
             formatter={(value) =>
               metric === "volume"
-                ? [`${Number(value).toLocaleString()} kg`, "Volume"]
+                ? [`${Number(value).toLocaleString()} ${unit}`, "Volume"]
                 : [`${value} min`, "Duration"]
             }
           />

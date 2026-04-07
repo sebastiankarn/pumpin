@@ -26,6 +26,7 @@ import {
   Pause,
   Play,
   Pencil,
+  Link2,
 } from "lucide-react";
 import type { SessionExercise, SessionSet, WorkoutSession } from "../types";
 import LoadingScreen from "../components/LoadingScreen";
@@ -48,7 +49,7 @@ export default function WorkoutSessionPage() {
     updateSetOptimistic,
     reload: reloadExercises,
   } = useSessionExercises(sessionId ?? null);
-  const { finishSession } = useWorkoutSessions();
+  const { finishSession, deleteSession } = useWorkoutSessions();
   const { profile, updateProfile } = useUserProfile();
   const { days } = useTemplateDays(profile?.active_template_id ?? null);
 
@@ -58,11 +59,16 @@ export default function WorkoutSessionPage() {
   const [pausedAt, setPausedAt] = useState(0);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [swapTarget, setSwapTarget] = useState<SessionExercise | null>(null);
+  const [supersetMode, setSupersetMode] = useState<{
+    step: "first" | "second";
+    firstExerciseId?: string;
+  } | null>(null);
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [customDuration, setCustomDuration] = useState("");
   const [populating, setPopulating] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { previousExercises } = usePreviousSession(
     session?.template_day_id ?? null,
@@ -115,7 +121,7 @@ export default function WorkoutSessionPage() {
       const { data: templateExercises } = await supabase
         .from("template_day_exercises")
         .select(
-          "exercise_id, order_index, default_sets, default_reps, default_rpe, default_rest_seconds",
+          "exercise_id, order_index, default_sets, default_reps, default_rpe, default_rest_seconds, superset_group",
         )
         .eq("template_day_id", sessionData.template_day_id)
         .order("order_index");
@@ -134,6 +140,7 @@ export default function WorkoutSessionPage() {
             exercise_id: te.exercise_id,
             order_index: te.order_index,
             swapped_from_exercise_id: null,
+            superset_group: te.superset_group ?? null,
           });
 
           // Pre-fill sets from template defaults
@@ -217,10 +224,34 @@ export default function WorkoutSessionPage() {
     if (swapTarget) {
       await swapExercise(swapTarget.id, exerciseId, swapTarget.exercise_id);
       setSwapTarget(null);
+      setShowExercisePicker(false);
+    } else if (supersetMode) {
+      if (supersetMode.step === "first") {
+        // Got first exercise, now pick second
+        setSupersetMode({ step: "second", firstExerciseId: exerciseId });
+        return; // Keep picker open
+      } else {
+        // Got second exercise, create the superset
+        const existingGroups = sessionExercises
+          .map((se) => se.superset_group)
+          .filter((g): g is number => g != null);
+        const nextGroup =
+          existingGroups.length > 0 ? Math.max(...existingGroups) + 1 : 1;
+        const baseIndex = sessionExercises.length;
+        await addExercise(
+          supersetMode.firstExerciseId!,
+          baseIndex,
+          undefined,
+          nextGroup,
+        );
+        await addExercise(exerciseId, baseIndex + 1, undefined, nextGroup);
+        setSupersetMode(null);
+        setShowExercisePicker(false);
+      }
     } else {
       await addExercise(exerciseId, sessionExercises.length);
+      setShowExercisePicker(false);
     }
-    setShowExercisePicker(false);
   };
 
   const getPreviousData = useCallback(
@@ -247,7 +278,7 @@ export default function WorkoutSessionPage() {
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 py-3">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/")}
@@ -264,7 +295,7 @@ export default function WorkoutSessionPage() {
             {!isFinished && (
               <button
                 onClick={togglePause}
-                className="flex items-center gap-1 text-primary text-sm"
+                className="flex items-center gap-1.5 text-primary text-sm font-mono"
               >
                 {paused ? (
                   <Play className="w-3.5 h-3.5" />
@@ -272,7 +303,7 @@ export default function WorkoutSessionPage() {
                   <Pause className="w-3.5 h-3.5" />
                 )}
                 <Timer className="w-3 h-3" />
-                <span className={paused ? "opacity-50" : ""}>
+                <span className={`tracking-wide ${paused ? "opacity-50" : ""}`}>
                   {formatTime(paused ? pausedAt : elapsed)}
                 </span>
               </button>
@@ -285,70 +316,183 @@ export default function WorkoutSessionPage() {
             )}
           </div>
           {isFinished ? (
-            <button
-              onClick={() => setEditing(!editing)}
-              className={`p-2 -mr-2 ${editing ? "text-primary" : "text-gray-400"}`}
-            >
-              {editing ? (
-                <Check className="w-5 h-5" />
-              ) : (
-                <Pencil className="w-5 h-5" />
-              )}
-            </button>
+            <div className="flex items-center gap-1 -mr-2">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 text-gray-400 hover:text-danger transition"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setEditing(!editing)}
+                className={`p-2 ${editing ? "text-primary" : "text-gray-400"}`}
+              >
+                {editing ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <Pencil className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           ) : (
-            <div className="w-9" />
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-2 -mr-2 text-gray-400 hover:text-danger transition"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           )}
         </div>
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 max-w-lg mx-auto w-full pb-32">
-        {sessionExercises.map((se) => {
-          const prevSets = getPreviousData(se.exercise_id);
-          const isExpanded = expandedExercise === se.id;
+        {(() => {
+          // Group exercises: standalone (null superset_group) rendered individually,
+          // exercises with the same superset_group rendered together
+          const rendered: (
+            | { type: "single"; exercise: SessionExercise }
+            | { type: "superset"; group: number; exercises: SessionExercise[] }
+          )[] = [];
+          const supersetGroups = new Map<number, SessionExercise[]>();
 
-          return (
-            <ExerciseCard
-              key={se.id}
-              sessionExercise={se}
-              previousSets={prevSets}
-              isExpanded={isExpanded}
-              isFinished={readOnly}
-              allExercises={allExercises}
-              onToggle={() => setExpandedExercise(isExpanded ? null : se.id)}
-              onSwap={() => {
-                setSwapTarget(se);
-                setShowExercisePicker(true);
-              }}
-              onRemove={() => removeExercise(se.id)}
-              onAddSet={addSetOptimistic}
-              onRemoveSet={removeSetOptimistic}
-              onUpdateSet={updateSetOptimistic}
-              isPR={isPR}
-            />
-          );
-        })}
+          for (const se of sessionExercises) {
+            if (se.superset_group != null) {
+              const group = supersetGroups.get(se.superset_group);
+              if (group) {
+                group.push(se);
+              } else {
+                supersetGroups.set(se.superset_group, [se]);
+              }
+            }
+          }
+
+          const renderedGroups = new Set<number>();
+
+          for (const se of sessionExercises) {
+            if (se.superset_group != null) {
+              if (renderedGroups.has(se.superset_group)) continue;
+              renderedGroups.add(se.superset_group);
+              rendered.push({
+                type: "superset",
+                group: se.superset_group,
+                exercises: supersetGroups.get(se.superset_group)!,
+              });
+            } else {
+              rendered.push({ type: "single", exercise: se });
+            }
+          }
+
+          return rendered.map((item) => {
+            if (item.type === "single") {
+              const se = item.exercise;
+              const prevSets = getPreviousData(se.exercise_id);
+              const isExpanded = expandedExercise === se.id;
+              return (
+                <ExerciseCard
+                  key={se.id}
+                  sessionExercise={se}
+                  previousSets={prevSets}
+                  isExpanded={isExpanded}
+                  isFinished={readOnly}
+                  allExercises={allExercises}
+                  onToggle={() =>
+                    setExpandedExercise(isExpanded ? null : se.id)
+                  }
+                  onSwap={() => {
+                    setSwapTarget(se);
+                    setShowExercisePicker(true);
+                  }}
+                  onRemove={() => removeExercise(se.id)}
+                  onAddSet={addSetOptimistic}
+                  onRemoveSet={removeSetOptimistic}
+                  onUpdateSet={updateSetOptimistic}
+                  isPR={isPR}
+                  weightUnit={profile?.weight_unit ?? "kg"}
+                />
+              );
+            } else {
+              return (
+                <div
+                  key={`ss-${item.group}`}
+                  className="relative rounded-2xl border border-primary/20 p-1 space-y-1"
+                >
+                  <div className="flex items-center gap-1.5 px-3 py-1">
+                    <Link2 className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      Superset
+                    </span>
+                  </div>
+                  {item.exercises.map((se) => {
+                    const prevSets = getPreviousData(se.exercise_id);
+                    const isExpanded = expandedExercise === se.id;
+                    return (
+                      <ExerciseCard
+                        key={se.id}
+                        sessionExercise={se}
+                        previousSets={prevSets}
+                        isExpanded={isExpanded}
+                        isFinished={readOnly}
+                        allExercises={allExercises}
+                        onToggle={() =>
+                          setExpandedExercise(isExpanded ? null : se.id)
+                        }
+                        onSwap={() => {
+                          setSwapTarget(se);
+                          setShowExercisePicker(true);
+                        }}
+                        onRemove={() => removeExercise(se.id)}
+                        onAddSet={addSetOptimistic}
+                        onRemoveSet={removeSetOptimistic}
+                        onUpdateSet={updateSetOptimistic}
+                        isPR={isPR}
+                        weightUnit={profile?.weight_unit ?? "kg"}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            }
+          });
+        })()}
 
         {!readOnly && (
-          <button
-            onClick={() => {
-              setSwapTarget(null);
-              setShowExercisePicker(true);
-            }}
-            className="w-full border-2 border-dashed border-gray-700 rounded-xl py-4 flex items-center justify-center gap-2 text-gray-400 hover:border-primary hover:text-primary transition"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Exercise</span>
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setSwapTarget(null);
+                setSupersetMode(null);
+                setShowExercisePicker(true);
+              }}
+              className="flex-1 border-2 border-dashed border-gray-700 rounded-xl py-4 flex items-center justify-center gap-2 text-gray-400 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Exercise</span>
+            </button>
+            <button
+              onClick={() => {
+                setSwapTarget(null);
+                setSupersetMode({ step: "first" });
+                setShowExercisePicker(true);
+              }}
+              className="flex-1 border-2 border-dashed border-gray-700 rounded-xl py-4 flex items-center justify-center gap-2 text-gray-400 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition"
+            >
+              <Link2 className="w-5 h-5" />
+              <span>Add Superset</span>
+            </button>
+          </div>
         )}
       </main>
 
       {/* Finish Button */}
       {!isFinished && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-gray-800 px-4 py-4">
+        <div
+          className="fixed bottom-0 left-0 right-0 glass-header px-4 py-4"
+          style={{ borderTop: "none", borderBottom: "none" }}
+        >
           <div className="max-w-lg mx-auto">
             {showFinishConfirm ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3 glass rounded-xl px-4 py-3">
                   <Timer className="w-5 h-5 text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-400">Duration (minutes)</p>
@@ -368,7 +512,7 @@ export default function WorkoutSessionPage() {
                       setShowFinishConfirm(false);
                       setCustomDuration("");
                     }}
-                    className="flex-1 bg-surface text-gray-300 font-semibold py-3 rounded-xl"
+                    className="flex-1 glass text-gray-300 font-semibold py-3 rounded-xl"
                   >
                     Cancel
                   </button>
@@ -387,7 +531,7 @@ export default function WorkoutSessionPage() {
                   setCustomDuration(Math.round(elapsed / 60).toString());
                   setShowFinishConfirm(true);
                 }}
-                className="w-full bg-success hover:bg-green-600 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition"
+                className="w-full btn-gradient btn-gradient-glow text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition"
               >
                 <Check className="w-5 h-5" />
                 Finish Workout ({formatTime(elapsed)})
@@ -405,9 +549,62 @@ export default function WorkoutSessionPage() {
           onClose={() => {
             setShowExercisePicker(false);
             setSwapTarget(null);
+            setSupersetMode(null);
           }}
-          title={swapTarget ? "Swap Exercise" : "Add Exercise"}
+          title={
+            swapTarget
+              ? "Swap Exercise"
+              : supersetMode?.step === "first"
+                ? "Superset — Pick 1st Exercise"
+                : supersetMode?.step === "second"
+                  ? "Superset — Pick 2nd Exercise"
+                  : "Add Exercise"
+          }
+          selectedExerciseName={
+            supersetMode?.step === "second"
+              ? allExercises.find((e) => e.id === supersetMode.firstExerciseId)
+                  ?.name
+              : undefined
+          }
         />
+      )}
+
+      {/* Delete Workout Confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="glass-elevated rounded-2xl w-full max-w-sm p-6 space-y-4 animate-fade-in-up">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-danger/15 flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="w-6 h-6 text-danger" />
+              </div>
+              <h3 className="text-white font-semibold text-lg">
+                {isFinished ? "Delete Workout?" : "Discard Workout?"}
+              </h3>
+              <p className="text-gray-400 text-sm mt-1">
+                This will permanently delete this workout and all logged sets.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 glass text-gray-300 font-medium py-2.5 rounded-xl text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (sessionId) {
+                    await deleteSession(sessionId);
+                  }
+                  navigate("/", { replace: true });
+                }}
+                className="flex-1 bg-danger text-white font-medium py-2.5 rounded-xl text-sm"
+              >
+                {isFinished ? "Delete" : "Discard"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -425,6 +622,7 @@ function ExerciseCard({
   onRemoveSet,
   onUpdateSet,
   isPR,
+  weightUnit,
 }: {
   sessionExercise: SessionExercise;
   previousSets: SessionSet[];
@@ -437,13 +635,20 @@ function ExerciseCard({
   onAddSet: (sessionExerciseId: string, newSet: SessionSet) => void;
   onRemoveSet: (sessionExerciseId: string, setId: string) => void;
   onUpdateSet: (setId: string, updates: Partial<SessionSet>) => void;
-  isPR: (exerciseId: string, weight: number | null, reps: number | null) => boolean;
+  isPR: (
+    exerciseId: string,
+    weight: number | null,
+    reps: number | null,
+  ) => boolean;
+  weightUnit: string;
 }) {
   const sets = sessionExercise.sets ?? [];
   const [showVideo, setShowVideo] = useState(false);
   const videoUrl = sessionExercise.exercise?.video_url;
   const exType = sessionExercise.exercise?.exercise_type ?? "strength";
   const isCardio = exType === "cardio";
+  const isDuration = exType === "duration";
+  const repsLabel = isDuration ? "Sec" : "Reps";
 
   const getYouTubeId = (url: string): string | null => {
     const match = url.match(
@@ -453,7 +658,9 @@ function ExerciseCard({
   };
 
   return (
-    <div className="bg-surface rounded-xl overflow-hidden">
+    <div
+      className={`glass glass-shimmer rounded-2xl overflow-hidden ${!isFinished ? "accent-stripe" : ""}`}
+    >
       {/* Exercise Header */}
       <button
         onClick={onToggle}
@@ -531,8 +738,8 @@ function ExerciseCard({
                     </>
                   ) : (
                     <>
-                      <span className="col-span-2">kg</span>
-                      <span className="col-span-2">Reps</span>
+                      <span className="col-span-2">{weightUnit}</span>
+                      <span className="col-span-2">{repsLabel}</span>
                       <span className="col-span-2">RPE</span>
                       <span className="col-span-2">Rest</span>
                     </>
@@ -548,16 +755,28 @@ function ExerciseCard({
                     {isCardio ? (
                       <>
                         <span className="col-span-2">
-                          {ps.duration_seconds ? Math.round(ps.duration_seconds / 60) : "–"}
+                          {ps.duration_seconds
+                            ? Math.round(ps.duration_seconds / 60)
+                            : "–"}
                         </span>
-                        <span className="col-span-2">{ps.distance_km ?? "–"}</span>
+                        <span className="col-span-2">
+                          {ps.distance_km ?? "–"}
+                        </span>
                         <span className="col-span-2">{ps.calories ?? "–"}</span>
-                        <span className="col-span-2">{ps.avg_heart_rate ?? "–"}</span>
+                        <span className="col-span-2">
+                          {ps.avg_heart_rate ?? "–"}
+                        </span>
                       </>
                     ) : (
                       <>
                         <span className="col-span-2">{ps.weight ?? "–"}</span>
-                        <span className="col-span-2">{ps.reps ?? "–"}</span>
+                        <span className="col-span-2">
+                          {ps.reps != null
+                            ? isDuration
+                              ? `${ps.reps}s`
+                              : ps.reps
+                            : "–"}
+                        </span>
                         <span className="col-span-2">{ps.rpe ?? "–"}</span>
                         <span className="col-span-2">
                           {ps.rest_seconds ? `${ps.rest_seconds}s` : "–"}
@@ -588,8 +807,8 @@ function ExerciseCard({
                   </>
                 ) : (
                   <>
-                    <span className="col-span-2">kg</span>
-                    <span className="col-span-2">Reps</span>
+                    <span className="col-span-2">{weightUnit}</span>
+                    <span className="col-span-2">{repsLabel}</span>
                     <span className="col-span-2">RPE</span>
                     <span className="col-span-2">Rest</span>
                   </>
@@ -605,7 +824,10 @@ function ExerciseCard({
                 disabled={isFinished}
                 onRemoveSet={onRemoveSet}
                 onUpdateSet={onUpdateSet}
-                isPR={!isCardio && isPR(sessionExercise.exercise_id, set.weight, set.reps)}
+                isPR={
+                  !isCardio &&
+                  isPR(sessionExercise.exercise_id, set.weight, set.reps)
+                }
                 exerciseType={exType}
               />
             ))}

@@ -16,7 +16,7 @@ create table exercises (
   name text not null,
   muscle_group text not null,
   equipment text,
-  exercise_type text not null default 'strength',
+  exercise_type text not null default 'strength', -- 'strength' | 'cardio' | 'duration'
   created_by uuid references auth.users(id),
   is_global boolean default false,
   created_at timestamptz default now()
@@ -48,7 +48,8 @@ create table template_day_exercises (
   default_sets integer,
   default_reps integer,
   default_rpe numeric,
-  default_rest_seconds integer
+  default_rest_seconds integer,
+  superset_group integer
 );
 
 -- User profile & schedule state
@@ -59,6 +60,8 @@ create table user_profiles (
   current_day_index integer default 0,
   dashboard_widgets jsonb,
   weight_unit text,
+  weekly_goal integer default 5,
+  stats_config jsonb,
   created_at timestamptz default now()
 );
 
@@ -79,7 +82,8 @@ create table session_exercises (
   session_id uuid not null references workout_sessions(id) on delete cascade,
   exercise_id uuid not null references exercises(id),
   order_index integer not null,
-  swapped_from_exercise_id uuid references exercises(id)
+  swapped_from_exercise_id uuid references exercises(id),
+  superset_group integer
 );
 
 -- Individual sets within a session exercise
@@ -258,6 +262,9 @@ create policy "Users can create own sessions"
 
 create policy "Users can update own sessions"
   on workout_sessions for update using (user_id = auth.uid());
+
+create policy "Users can delete own sessions"
+  on workout_sessions for delete using (user_id = auth.uid());
 
 -- Session exercises: follow session ownership
 create policy "Users can view own session exercises"

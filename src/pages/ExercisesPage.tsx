@@ -83,7 +83,7 @@ export default function ExercisesPage() {
     onCancel: () => void,
     saveLabel: string,
   ) => (
-    <div className="bg-surface rounded-xl p-4 mb-4 space-y-2">
+    <div className="glass rounded-xl p-4 mb-4 space-y-2">
       <input
         type="text"
         value={newName}
@@ -163,7 +163,7 @@ export default function ExercisesPage() {
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
@@ -185,14 +185,14 @@ export default function ExercisesPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
+      <main className="flex-1 px-4 py-4 pb-24 max-w-lg mx-auto w-full">
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-surface rounded-lg pl-9 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full glass rounded-lg pl-9 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
             placeholder="Search exercises..."
           />
         </div>
@@ -224,7 +224,7 @@ export default function ExercisesPage() {
                     ) : (
                       <div
                         key={exercise.id}
-                        className="bg-surface rounded-lg px-4 py-3"
+                        className="glass rounded-lg px-4 py-3"
                       >
                         <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">

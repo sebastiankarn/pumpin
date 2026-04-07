@@ -20,6 +20,8 @@ import {
   Pencil,
   ArrowUp,
   ArrowDown,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import type { TemplateDayExercise } from "../types";
 
@@ -63,7 +65,7 @@ export default function TemplatesPage() {
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
@@ -82,7 +84,7 @@ export default function TemplatesPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full space-y-3">
+      <main className="flex-1 px-4 py-4 pb-24 max-w-lg mx-auto w-full space-y-3">
         {showCreate && user && (
           <CreateTemplate
             userId={user.id}
@@ -222,7 +224,7 @@ function TemplateCard({
 
   return (
     <div
-      className={`bg-surface rounded-xl overflow-hidden ${
+      className={`glass rounded-2xl overflow-hidden ${
         isActive ? "ring-2 ring-primary" : ""
       }`}
     >
@@ -449,8 +451,45 @@ function TemplateDayEditor({ templateDayId }: { templateDayId: string }) {
   const { exercises: allExercises } = useExercises();
   const [showPicker, setShowPicker] = useState(false);
   const [editingDefaults, setEditingDefaults] = useState<string | null>(null);
+  const [supersetMode, setSupersetMode] = useState<{
+    step: "first" | "second";
+    firstExerciseId?: string;
+  } | null>(null);
 
   const handleAddExercise = async (exerciseId: string) => {
+    if (supersetMode) {
+      if (supersetMode.step === "first") {
+        setSupersetMode({ step: "second", firstExerciseId: exerciseId });
+        return; // Keep picker open
+      } else {
+        // Got both exercises — create superset
+        const existingGroups = dayExercises
+          .map((de) => de.superset_group)
+          .filter((g): g is number => g != null);
+        const nextGroup =
+          existingGroups.length > 0 ? Math.max(...existingGroups) + 1 : 1;
+        const baseIndex = dayExercises.length;
+        await supabase.from("template_day_exercises").insert({
+          id: crypto.randomUUID(),
+          template_day_id: templateDayId,
+          exercise_id: supersetMode.firstExerciseId!,
+          order_index: baseIndex,
+          superset_group: nextGroup,
+        });
+        await supabase.from("template_day_exercises").insert({
+          id: crypto.randomUUID(),
+          template_day_id: templateDayId,
+          exercise_id: exerciseId,
+          order_index: baseIndex + 1,
+          superset_group: nextGroup,
+        });
+        setSupersetMode(null);
+        setShowPicker(false);
+        reload();
+        return;
+      }
+    }
+
     await supabase.from("template_day_exercises").insert({
       id: crypto.randomUUID(),
       template_day_id: templateDayId,
@@ -483,6 +522,14 @@ function TemplateDayEditor({ templateDayId }: { templateDayId: string }) {
     reload();
   };
 
+  const handleUnlinkSuperset = async (exerciseId: string) => {
+    await supabase
+      .from("template_day_exercises")
+      .update({ superset_group: null })
+      .eq("id", exerciseId);
+    reload();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-3">
@@ -491,59 +538,144 @@ function TemplateDayEditor({ templateDayId }: { templateDayId: string }) {
     );
   }
 
+  // Group exercises for rendering (supersets grouped together)
+  const rendered: (
+    | { type: "single"; exercise: TemplateDayExercise }
+    | { type: "superset"; group: number; exercises: TemplateDayExercise[] }
+  )[] = [];
+  const supersetGroups = new Map<number, TemplateDayExercise[]>();
+  for (const de of dayExercises) {
+    if (de.superset_group != null) {
+      const group = supersetGroups.get(de.superset_group);
+      if (group) group.push(de);
+      else supersetGroups.set(de.superset_group, [de]);
+    }
+  }
+  const renderedGroups = new Set<number>();
+  for (const de of dayExercises) {
+    if (de.superset_group != null) {
+      if (renderedGroups.has(de.superset_group)) continue;
+      renderedGroups.add(de.superset_group);
+      rendered.push({
+        type: "superset",
+        group: de.superset_group,
+        exercises: supersetGroups.get(de.superset_group)!,
+      });
+    } else {
+      rendered.push({ type: "single", exercise: de });
+    }
+  }
+
+  const renderExerciseRow = (de: TemplateDayExercise, inSuperset?: boolean) => (
+    <div key={de.id} className="bg-background rounded-lg px-3 py-2">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm truncate">
+            {de.exercise?.name ?? "Unknown"}
+          </p>
+          <p className="text-gray-500 text-xs">{de.exercise?.muscle_group}</p>
+        </div>
+        <button
+          onClick={() =>
+            setEditingDefaults(editingDefaults === de.id ? null : de.id)
+          }
+          className="text-xs text-gray-400 hover:text-primary px-2 py-1 rounded transition"
+        >
+          {de.default_sets || de.default_reps ? "✓ Defaults" : "Defaults"}
+        </button>
+        {inSuperset && (
+          <button
+            onClick={() => handleUnlinkSuperset(de.id)}
+            className="text-gray-600 hover:text-warning p-1 transition"
+            title="Remove from superset"
+          >
+            <Unlink className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button
+          onClick={() => handleRemoveExercise(de.id)}
+          className="text-gray-600 hover:text-danger p-1 transition"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {editingDefaults === de.id && (
+        <DefaultsEditor
+          exercise={de}
+          onSave={(updates) => handleUpdateDefaults(de.id, updates)}
+          onClose={() => setEditingDefaults(null)}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="mt-1 ml-2 border-l-2 border-gray-700 pl-3 space-y-2 py-2">
-      {dayExercises.map((de) => (
-        <div key={de.id} className="bg-background rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm truncate">
-                {de.exercise?.name ?? "Unknown"}
-              </p>
-              <p className="text-gray-500 text-xs">
-                {de.exercise?.muscle_group}
-              </p>
+      {rendered.map((item) => {
+        if (item.type === "single") {
+          return renderExerciseRow(item.exercise);
+        }
+        return (
+          <div
+            key={`ss-${item.group}`}
+            className="rounded-lg border border-primary/20 p-1.5 space-y-1"
+          >
+            <div className="flex items-center gap-1.5 px-2 py-0.5">
+              <Link2 className="w-3 h-3 text-primary" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Superset
+              </span>
             </div>
-            <button
-              onClick={() =>
-                setEditingDefaults(editingDefaults === de.id ? null : de.id)
-              }
-              className="text-xs text-gray-400 hover:text-primary px-2 py-1 rounded transition"
-            >
-              {de.default_sets || de.default_reps ? "✓ Defaults" : "Defaults"}
-            </button>
-            <button
-              onClick={() => handleRemoveExercise(de.id)}
-              className="text-gray-600 hover:text-danger p-1 transition"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {item.exercises.map((de) => renderExerciseRow(de, true))}
           </div>
+        );
+      })}
 
-          {editingDefaults === de.id && (
-            <DefaultsEditor
-              exercise={de}
-              onSave={(updates) => handleUpdateDefaults(de.id, updates)}
-              onClose={() => setEditingDefaults(null)}
-            />
-          )}
-        </div>
-      ))}
-
-      <button
-        onClick={() => setShowPicker(true)}
-        className="w-full border border-dashed border-gray-700 rounded-lg py-2 flex items-center justify-center gap-1 text-gray-500 hover:border-primary hover:text-primary text-xs transition"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        Add Exercise
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            setSupersetMode(null);
+            setShowPicker(true);
+          }}
+          className="flex-1 border border-dashed border-gray-700 rounded-lg py-2 flex items-center justify-center gap-1 text-gray-500 hover:border-primary hover:text-primary text-xs transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Exercise
+        </button>
+        <button
+          onClick={() => {
+            setSupersetMode({ step: "first" });
+            setShowPicker(true);
+          }}
+          className="flex-1 border border-dashed border-gray-700 rounded-lg py-2 flex items-center justify-center gap-1 text-gray-500 hover:border-primary hover:text-primary text-xs transition"
+        >
+          <Link2 className="w-3.5 h-3.5" />
+          Add Superset
+        </button>
+      </div>
 
       {showPicker && (
         <ExercisePicker
           exercises={allExercises}
           onSelect={handleAddExercise}
-          onClose={() => setShowPicker(false)}
-          title="Add Exercise to Day"
+          onClose={() => {
+            setShowPicker(false);
+            setSupersetMode(null);
+          }}
+          title={
+            supersetMode?.step === "first"
+              ? "Superset — Pick 1st Exercise"
+              : supersetMode?.step === "second"
+                ? "Superset — Pick 2nd Exercise"
+                : "Add Exercise to Day"
+          }
+          selectedExerciseName={
+            supersetMode?.step === "second"
+              ? allExercises.find((e) => e.id === supersetMode.firstExerciseId)
+                  ?.name
+              : undefined
+          }
         />
       )}
     </div>

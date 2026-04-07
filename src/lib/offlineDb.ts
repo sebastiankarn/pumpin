@@ -65,3 +65,8 @@ export async function clearPendingChanges(): Promise<void> {
   const db = await getDB();
   await db.clear("pendingChanges");
 }
+
+export async function removeCache(key: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("cache", key);
+}

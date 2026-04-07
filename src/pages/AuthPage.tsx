@@ -39,7 +39,7 @@ export default function AuthPage() {
           <h1 className="text-3xl font-bold text-white">Pumpin</h1>
         </div>
 
-        <div className="bg-surface rounded-2xl p-6 shadow-lg">
+        <div className="glass-elevated rounded-2xl p-6 shadow-lg">
           <h2 className="text-xl font-semibold text-white mb-6 text-center">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </h2>
@@ -83,7 +83,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 btn-gradient btn-gradient-glow"
             >
               {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
             </button>

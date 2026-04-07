@@ -9,6 +9,7 @@ import ExercisesPage from "./pages/ExercisesPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import SettingsPage from "./pages/SettingsPage";
 import WorkoutSummaryPage from "./pages/WorkoutSummaryPage";
+import TabBar from "./components/TabBar";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
+          <div className="ambient-bg" />
           <Routes>
             <Route
               path="/auth"
@@ -106,6 +108,7 @@ export default function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <TabBar />
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

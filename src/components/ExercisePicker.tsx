@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { X, Plus, Search } from "lucide-react";
+import { X, Plus, Search, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import type { Exercise } from "../types";
+import type { Exercise, ExerciseType } from "../types";
 
 interface ExercisePickerProps {
   exercises: Exercise[];
   onSelect: (exerciseId: string) => void;
   onClose: () => void;
   title?: string;
+  selectedExerciseName?: string;
 }
 
 export default function ExercisePicker({
@@ -15,6 +16,7 @@ export default function ExercisePicker({
   onSelect,
   onClose,
   title = "Select Exercise",
+  selectedExerciseName,
 }: ExercisePickerProps) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -22,6 +24,8 @@ export default function ExercisePicker({
   const [newMuscle, setNewMuscle] = useState("");
   const [newEquipment, setNewEquipment] = useState("");
   const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newExerciseType, setNewExerciseType] =
+    useState<ExerciseType>("strength");
 
   const filtered = exercises.filter(
     (e) =>
@@ -43,6 +47,7 @@ export default function ExercisePicker({
         muscle_group: newMuscle.trim(),
         equipment: newEquipment.trim() || null,
         video_url: newVideoUrl.trim() || null,
+        exercise_type: newExerciseType,
         is_global: false,
       })
       .select()
@@ -55,7 +60,7 @@ export default function ExercisePicker({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center">
-      <div className="bg-surface w-full max-w-lg max-h-[85svh] rounded-t-2xl sm:rounded-2xl flex flex-col animate-slide-up">
+      <div className="glass-elevated w-full max-w-lg max-h-[85svh] rounded-t-2xl sm:rounded-2xl flex flex-col animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
           <h3 className="text-white font-semibold">{title}</h3>
@@ -81,6 +86,20 @@ export default function ExercisePicker({
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {/* Selected superset exercise indicator */}
+          {selectedExerciseName && (
+            <div className="mb-4 flex items-center gap-2 bg-primary/15 border border-primary/30 rounded-xl px-3 py-2.5">
+              <Check className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-primary/70 font-medium">
+                  1st exercise selected
+                </p>
+                <p className="text-sm text-primary font-semibold truncate">
+                  {selectedExerciseName}
+                </p>
+              </div>
+            </div>
+          )}
           {muscleGroups.map((group) => {
             const groupExercises = filtered.filter(
               (e) => e.muscle_group === group,
@@ -174,6 +193,28 @@ export default function ExercisePicker({
               className="w-full bg-surface-light rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="YouTube link (optional)"
             />
+            <div className="flex gap-1.5">
+              {(["strength", "duration", "cardio"] as ExerciseType[]).map(
+                (t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setNewExerciseType(t)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${
+                      newExerciseType === t
+                        ? "bg-primary text-white"
+                        : "bg-surface-light text-gray-400"
+                    }`}
+                  >
+                    {t === "strength"
+                      ? "Strength"
+                      : t === "duration"
+                        ? "Duration"
+                        : "Cardio"}
+                  </button>
+                ),
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAdd(false)}

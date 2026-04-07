@@ -29,7 +29,9 @@ export default function SetRow({
   const [rest, setRest] = useState(set.rest_seconds?.toString() ?? "");
   // Cardio fields
   const [duration, setDuration] = useState(
-    set.duration_seconds ? Math.round(set.duration_seconds / 60).toString() : "",
+    set.duration_seconds
+      ? Math.round(set.duration_seconds / 60).toString()
+      : "",
   );
   const [distance, setDistance] = useState(set.distance_km?.toString() ?? "");
   const [calories, setCalories] = useState(set.calories?.toString() ?? "");
@@ -87,7 +89,15 @@ export default function SetRow({
   const inputClasses =
     "bg-background rounded px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary w-full disabled:opacity-50";
 
+  const cursorToEnd = (e: React.FocusEvent<HTMLInputElement>) => {
+    const el = e.target;
+    requestAnimationFrame(() => {
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  };
+
   const isCardio = exerciseType === "cardio";
+  const isDuration = exerciseType === "duration";
 
   return (
     <div className="space-y-1">
@@ -108,6 +118,7 @@ export default function SetRow({
                 inputMode="numeric"
                 value={duration}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setDuration(e.target.value);
                   save({
@@ -126,6 +137,7 @@ export default function SetRow({
                 inputMode="decimal"
                 value={distance}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setDistance(e.target.value);
                   save({
@@ -144,12 +156,11 @@ export default function SetRow({
                 inputMode="numeric"
                 value={calories}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setCalories(e.target.value);
                   save({
-                    calories: e.target.value
-                      ? parseInt(e.target.value)
-                      : null,
+                    calories: e.target.value ? parseInt(e.target.value) : null,
                   });
                 }}
                 className={inputClasses}
@@ -162,6 +173,7 @@ export default function SetRow({
                 inputMode="numeric"
                 value={heartRate}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setHeartRate(e.target.value);
                   save({
@@ -183,6 +195,7 @@ export default function SetRow({
                 inputMode="decimal"
                 value={weight}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setWeight(e.target.value);
                   save({
@@ -199,6 +212,7 @@ export default function SetRow({
                 inputMode="numeric"
                 value={reps}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setReps(e.target.value);
                   save({
@@ -215,6 +229,7 @@ export default function SetRow({
                 inputMode="decimal"
                 value={rpe}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setRpe(e.target.value);
                   save({
@@ -231,6 +246,7 @@ export default function SetRow({
                 inputMode="numeric"
                 value={rest}
                 disabled={disabled}
+                onFocus={cursorToEnd}
                 onChange={(e) => {
                   setRest(e.target.value);
                   save({

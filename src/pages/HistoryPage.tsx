@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useWorkoutSessions } from "../hooks/useWorkout";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import EmptyState from "../components/EmptyState";
 
 export default function HistoryPage() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
@@ -41,15 +42,13 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
+      <main className="flex-1 px-4 py-4 pb-24 max-w-lg mx-auto w-full">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : completedSessions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No completed workouts yet.</p>
-          </div>
+          <EmptyState type="history" />
         ) : (
           Object.keys(grouped)
             .sort()
@@ -59,12 +58,13 @@ export default function HistoryPage() {
                 <h2 className="text-sm text-gray-500 uppercase tracking-wide mb-2">
                   {monthLabel(key)} · {grouped[key].length} workouts
                 </h2>
+                <div className="gradient-divider mb-3" />
                 <div className="space-y-2">
                   {grouped[key].map((session) => (
                     <button
                       key={session.id}
                       onClick={() => navigate(`/workout/${session.id}/summary`)}
-                      className="w-full bg-surface rounded-xl p-4 flex items-center gap-3 text-left active:bg-surface-light transition"
+                      className="w-full glass glass-hover glass-shimmer rounded-xl p-4 flex items-center gap-3 text-left transition tap-flash active:scale-[0.98]"
                     >
                       <div className="flex-1">
                         <p className="text-white font-medium">

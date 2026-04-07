@@ -13,11 +13,7 @@ import {
 } from "../hooks/useWorkout";
 import {
   Dumbbell,
-  Clock,
-  Flame,
-  TrendingUp,
   ChevronRight,
-  CalendarDays,
   Timer,
   List,
   X,
@@ -25,18 +21,26 @@ import {
   Sun,
   Moon,
   Monitor,
-  Settings,
+  Trash2,
 } from "lucide-react";
 import { syncPendingChanges } from "../lib/sync";
 import { supabase } from "../lib/supabase";
-import type { DashboardWidget, TemplateDay } from "../types";
+import type {
+  DashboardWidget,
+  TemplateDay,
+  StatSlot,
+  StatsConfig,
+} from "../types";
 import LoadingScreen from "../components/LoadingScreen";
 import PumpkinLogo from "../components/PumpkinLogo";
 import VolumeChart from "../components/VolumeChart";
 import VolumeSummary from "../components/VolumeSummary";
 import BodyWeightWidget from "../components/BodyWeightWidget";
+import WeeklyRing from "../components/WeeklyRing";
+import EmptyState from "../components/EmptyState";
 import { useBodyWeight } from "../hooks/useBodyWeight";
 import { useTheme } from "../contexts/ThemeContext";
+import { useCountUp } from "../hooks/useCountUp";
 
 const DEFAULT_WIDGETS: DashboardWidget[] = [
   "stats",
@@ -54,9 +58,14 @@ export default function Dashboard() {
     sessions,
     loading: sessionsLoading,
     startSession,
+    deleteSession,
     reload: reloadSessions,
   } = useWorkoutSessions();
-  const { stats, loading: statsLoading } = useWorkoutStats();
+  const {
+    stats,
+    loading: statsLoading,
+    reload: reloadStats,
+  } = useWorkoutStats();
   const { days, loading: daysLoading } = useTemplateDays(
     profile?.active_template_id ?? null,
   );
@@ -66,6 +75,7 @@ export default function Dashboard() {
   const [blankName, setBlankName] = useState("");
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [promptName, setPromptName] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [volumeRange, setVolumeRange] = useState<"week" | "month" | "year">(
     "month",
   );
@@ -109,6 +119,7 @@ export default function Dashboard() {
       setSyncing(true);
       await syncPendingChanges();
       await reloadSessions();
+      reloadStats();
       setSyncing(false);
     };
 
@@ -142,8 +153,6 @@ export default function Dashboard() {
 
   const pageLoading = profileLoading || sessionsLoading || daysLoading;
   if (pageLoading) return <LoadingScreen />;
-
-  const greeting = profile?.display_name ?? user?.email?.split("@")[0] ?? "";
 
   const currentDay = days[profile?.current_day_index ?? 0];
   const activeSession = sessions.find((s) => !s.finished_at);
@@ -196,62 +205,49 @@ export default function Dashboard() {
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
-        <div className="flex items-center gap-2">
-          <PumpkinLogo className="w-7 h-7 text-primary" />
-          <span className="font-bold text-lg text-white">Pumpin</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {syncing && (
-            <span className="text-xs text-warning animate-pulse">
-              Syncing...
-            </span>
-          )}
-          <button
-            onClick={() =>
-              setMode(
-                mode === "auto" ? "light" : mode === "light" ? "dark" : "auto",
-              )
-            }
-            className="text-gray-400 hover:text-white transition p-2"
-            title={`Theme: ${mode}`}
-          >
-            {mode === "light" ? (
-              <Sun className="w-4.5 h-4.5" />
-            ) : mode === "dark" ? (
-              <Moon className="w-4.5 h-4.5" />
-            ) : (
-              <Monitor className="w-4.5 h-4.5" />
+      <header className="sticky top-0 z-10 glass-header px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PumpkinLogo className="w-7 h-7 text-primary" />
+            <span className="font-bold text-lg text-white">Pumpin</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {syncing && (
+              <span className="text-xs text-warning animate-pulse">
+                Syncing...
+              </span>
             )}
-          </button>
-          <button
-            onClick={() => navigate("/settings")}
-            className="text-gray-400 hover:text-white transition p-2"
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+            <button
+              onClick={() =>
+                setMode(
+                  mode === "auto"
+                    ? "light"
+                    : mode === "light"
+                      ? "dark"
+                      : "auto",
+                )
+              }
+              className="text-gray-400 hover:text-white transition p-2"
+              title={`Theme: ${mode}`}
+            >
+              {mode === "light" ? (
+                <Sun className="w-4.5 h-4.5" />
+              ) : mode === "dark" ? (
+                <Moon className="w-4.5 h-4.5" />
+              ) : (
+                <Monitor className="w-4.5 h-4.5" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-6 space-y-6 max-w-lg mx-auto w-full">
-        {/* Welcome */}
-        <div>
-          <h1 className="text-2xl font-bold text-white">
-            Hey{greeting ? `, ${greeting}` : ""}! 💪
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {activeSession
-              ? "You have an active workout — let's finish it!"
-              : "Ready to crush today's workout?"}
-          </p>
-        </div>
-
+      <main className="flex-1 px-4 py-6 space-y-6 max-w-lg mx-auto w-full pb-24 stagger">
         {/* Next Workout CTA */}
         {activeSession ? (
           <button
             onClick={handleContinueWorkout}
-            className="w-full bg-warning/20 border border-warning/40 rounded-2xl p-5 text-left flex items-center gap-4 active:scale-[0.98] transition"
+            className="w-full glass glass-hover rounded-2xl p-5 text-left flex items-center gap-4 active:scale-[0.98] transition pulse-glow tap-flash"
           >
             <div className="bg-warning/20 rounded-xl p-3">
               <Timer className="w-7 h-7 text-warning" />
@@ -273,10 +269,10 @@ export default function Dashboard() {
             <div className="flex gap-2">
               <button
                 onClick={handleStartWorkout}
-                className="flex-1 bg-primary/20 border border-primary/40 rounded-2xl p-5 text-left flex items-center gap-4 active:scale-[0.98] transition"
+                className="flex-1 btn-gradient btn-gradient-glow rounded-2xl p-5 text-left flex items-center gap-4 active:scale-[0.98] transition tap-flash"
               >
-                <div className="bg-primary/20 rounded-xl p-3">
-                  <Dumbbell className="w-7 h-7 text-primary" />
+                <div className="bg-white/20 rounded-xl p-3">
+                  <Dumbbell className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-semibold text-lg truncate">
@@ -284,7 +280,7 @@ export default function Dashboard() {
                       ? `Start: ${currentDay.name}`
                       : "Set up a split first"}
                   </p>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-white/70 text-sm">
                     {currentDay
                       ? `Day ${(profile?.current_day_index ?? 0) + 1} of ${days.length}`
                       : "Go to settings"}
@@ -294,7 +290,7 @@ export default function Dashboard() {
               {(days.length > 0 || templates.length > 0) && (
                 <button
                   onClick={() => setShowDayPicker(true)}
-                  className="bg-surface border border-gray-700 rounded-2xl px-4 flex flex-col items-center justify-center gap-1 active:scale-[0.98] transition"
+                  className="glass glass-hover rounded-2xl px-4 flex flex-col items-center justify-center gap-1 active:scale-[0.98] transition"
                   title="Choose another workout"
                 >
                   <List className="w-5 h-5 text-gray-300" />
@@ -317,8 +313,8 @@ export default function Dashboard() {
         {/* Day Picker Modal */}
         {showDayPicker && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-surface rounded-2xl w-full max-w-md max-h-[70vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-4 border-b border-gray-700">
+            <div className="glass-elevated rounded-2xl w-full max-w-md max-h-[70vh] overflow-y-auto animate-slide-up">
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
                 <h3 className="text-white font-semibold">Choose a workout</h3>
                 <button
                   onClick={() => {
@@ -369,7 +365,7 @@ export default function Dashboard() {
 
                 {/* Blank session */}
                 {currentDay && (
-                  <div className="border-t border-gray-700 mt-2 pt-3 px-4 pb-2 space-y-2">
+                  <div className="border-t border-white/10 mt-2 pt-3 px-4 pb-2 space-y-2">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">
                       Blank session
                     </p>
@@ -395,36 +391,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Stats Grid */}
+        {/* Stats */}
         {widgets.includes("stats") && !statsLoading && stats && (
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              icon={<Flame className="w-5 h-5 text-orange-400" />}
-              label="Streak"
-              value={`${stats.currentStreak} day${stats.currentStreak !== 1 ? "s" : ""}`}
-            />
-            <StatCard
-              icon={<CalendarDays className="w-5 h-5 text-blue-400" />}
-              label="This Week"
-              value={`${stats.workoutsThisWeek} workout${stats.workoutsThisWeek !== 1 ? "s" : ""}`}
-            />
-            <StatCard
-              icon={<TrendingUp className="w-5 h-5 text-green-400" />}
-              label="This Month"
-              value={`${stats.workoutsThisMonth} workouts`}
-            />
-            <StatCard
-              icon={<Clock className="w-5 h-5 text-purple-400" />}
-              label="Time This Month"
-              value={`${stats.minutesThisMonth} min`}
-            />
-            <StatCard
-              icon={<Dumbbell className="w-5 h-5 text-primary-light" />}
-              label="Total Workouts"
-              value={String(stats.totalWorkouts)}
-              className="col-span-2"
-            />
-          </div>
+          <StatsBar
+            stats={stats}
+            config={profile?.stats_config ?? undefined}
+            weeklyGoal={profile?.weekly_goal ?? 5}
+          />
         )}
 
         {/* Volume breakdown */}
@@ -432,6 +405,7 @@ export default function Dashboard() {
           <VolumeSummary
             volumeByCategory={volumeByCategory}
             totalVolume={totalVolume}
+            unit={weightUnit}
           />
         )}
 
@@ -439,7 +413,7 @@ export default function Dashboard() {
         {widgets.includes("chart") && !volumeLoading && (
           <div className="space-y-2">
             <div className="flex justify-end">
-              <div className="flex bg-surface rounded-lg overflow-hidden text-xs">
+              <div className="flex bg-white/5 rounded-lg overflow-hidden text-xs">
                 {(["week", "month", "year"] as const).map((r) => (
                   <button
                     key={r}
@@ -455,7 +429,7 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-            <VolumeChart data={chartData} />
+            <VolumeChart data={chartData} unit={weightUnit} />
           </div>
         )}
 
@@ -474,36 +448,99 @@ export default function Dashboard() {
               </button>
             </div>
             {sessions.filter((s) => s.finished_at).length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                No completed workouts yet. Start your first one!
-              </p>
+              <EmptyState
+                type="workouts"
+                message="No completed workouts yet. Start your first one!"
+              />
             ) : (
-              <div className="space-y-2">
+              <div className="scroll-snap-x flex gap-3 -mx-4 px-4">
                 {sessions
                   .filter((s) => s.finished_at)
-                  .slice(0, 5)
+                  .slice(0, 8)
                   .map((session) => (
-                    <button
+                    <div
                       key={session.id}
-                      onClick={() => navigate(`/workout/${session.id}/summary`)}
-                      className="w-full bg-surface rounded-xl p-4 flex items-center gap-3 text-left active:bg-surface-light transition"
+                      className="glass glass-hover glass-shimmer rounded-xl p-4 min-w-[160px] flex-shrink-0 text-left transition tap-flash active:scale-[0.97] relative group"
                     >
-                      <div className="flex-1">
-                        <p className="text-white font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(session.id);
+                        }}
+                        className="absolute top-2 right-2 p-1 text-gray-600 opacity-0 group-hover:opacity-100 hover:text-danger transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          navigate(`/workout/${session.id}/summary`)
+                        }
+                        className="w-full text-left"
+                      >
+                        <p className="text-white font-semibold text-sm truncate pr-5">
                           {session.name ??
                             session.template_day?.name ??
                             "Workout"}
                         </p>
-                        <p className="text-gray-500 text-xs">
-                          {new Date(session.started_at).toLocaleDateString()} ·{" "}
-                          {session.duration_minutes} min
+                        <p className="text-gray-500 text-[11px] mt-1">
+                          {new Date(session.started_at).toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                            },
+                          )}
                         </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-500" />
-                    </button>
+                        <div className="gradient-divider my-2" />
+                        <p className="text-xs text-gray-400">
+                          <span className="text-white font-semibold">
+                            {session.duration_minutes}
+                          </span>{" "}
+                          min
+                        </p>
+                      </button>
+                    </div>
                   ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Delete Workout Confirmation */}
+        {deleteConfirmId && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="glass-elevated rounded-2xl w-full max-w-sm p-6 space-y-4 animate-fade-in-up">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-danger/15 flex items-center justify-center mx-auto mb-3">
+                  <Trash2 className="w-6 h-6 text-danger" />
+                </div>
+                <h3 className="text-white font-semibold text-lg">
+                  Delete Workout?
+                </h3>
+                <p className="text-gray-400 text-sm mt-1">
+                  This will permanently remove this workout and all its data.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 glass text-gray-300 font-medium py-2.5 rounded-xl text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    await deleteSession(deleteConfirmId);
+                    setDeleteConfirmId(null);
+                    reloadStats();
+                  }}
+                  className="flex-1 bg-danger text-white font-medium py-2.5 rounded-xl text-sm"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -517,32 +554,13 @@ export default function Dashboard() {
         )}
 
         {/* Quick actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate("/templates")}
-            className="flex-1 bg-surface hover:bg-surface-light rounded-xl py-3 text-sm text-gray-300 transition"
-          >
-            Splits
-          </button>
-          <button
-            onClick={() => navigate("/exercises")}
-            className="flex-1 bg-surface hover:bg-surface-light rounded-xl py-3 text-sm text-gray-300 transition"
-          >
-            Exercises
-          </button>
-          <button
-            onClick={() => navigate("/settings")}
-            className="flex-1 bg-surface hover:bg-surface-light rounded-xl py-3 text-sm text-gray-300 transition"
-          >
-            Settings
-          </button>
-        </div>
+        <div className="h-2" />
       </main>
 
       {/* First-login name prompt */}
       {showNamePrompt && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="glass-elevated rounded-2xl w-full max-w-sm p-6 space-y-4 animate-fade-in-up">
             <div className="text-center">
               <p className="text-2xl mb-1">🎃</p>
               <h3 className="text-white font-semibold text-lg">
@@ -586,24 +604,80 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  className = "",
+function StatsBar({
+  stats,
+  config,
+  weeklyGoal,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  className?: string;
+  stats: {
+    currentStreak: number;
+    workoutsThisWeek: number;
+    workoutsThisMonth: number;
+    minutesThisMonth: number;
+    minutesThisWeek: number;
+    avgDuration: number;
+    totalWorkouts: number;
+    totalMinutes: number;
+  };
+  config?: StatsConfig;
+  weeklyGoal: number;
 }) {
+  const DEFAULT_SLOTS: StatSlot[] = ["streak", "monthly", "minutes"];
+  const slots = config?.slots ?? DEFAULT_SLOTS;
+  const showRing = config?.showWeeklyRing !== false; // default on
+
+  const SLOT_DATA: Record<
+    StatSlot,
+    { value: number; label: string; suffix?: string }
+  > = {
+    streak: { value: stats.currentStreak, label: "day streak", suffix: "d" },
+    weekly: { value: stats.workoutsThisWeek, label: "this week" },
+    monthly: { value: stats.workoutsThisMonth, label: "this month" },
+    minutes: { value: stats.minutesThisMonth, label: "min this mo." },
+    weeklyMinutes: { value: stats.minutesThisWeek, label: "min this wk." },
+    avgDuration: { value: stats.avgDuration, label: "avg. min/workout" },
+    totalWorkouts: { value: stats.totalWorkouts, label: "all-time" },
+    totalMinutes: { value: stats.totalMinutes, label: "total min" },
+  };
+
+  // Determine grid columns: if ring is showing, stats sit beside it
+  // Otherwise stats get the full width
+  const gridCols =
+    slots.length <= 3
+      ? `grid-cols-${slots.length}`
+      : slots.length === 4
+        ? "grid-cols-4"
+        : slots.length <= 6
+          ? "grid-cols-3"
+          : "grid-cols-4";
+
   return (
-    <div className={`bg-surface rounded-xl p-4 ${className}`}>
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className="text-xs text-gray-400">{label}</span>
+    <div className="glass glass-shimmer rounded-2xl p-5">
+      <div className={`flex items-center ${showRing ? "gap-4" : ""}`}>
+        {showRing && (
+          <WeeklyRing workouts={stats.workoutsThisWeek} goal={weeklyGoal} />
+        )}
+        <div
+          className={`flex-1 grid ${gridCols} gap-y-3 divide-x divide-white/5`}
+        >
+          {slots.map((slot) => {
+            const d = SLOT_DATA[slot];
+            return <AnimatedStat key={slot} value={d.value} label={d.label} />;
+          })}
+        </div>
       </div>
-      <p className="text-white font-semibold text-lg">{value}</p>
+    </div>
+  );
+}
+
+function AnimatedStat({ value, label }: { value: number; label: string }) {
+  const animated = useCountUp(value);
+  return (
+    <div className="text-center px-1">
+      <p className="text-xl font-black tabular-nums text-white">{animated}</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5 leading-tight">
+        {label}
+      </p>
     </div>
   );
 }
