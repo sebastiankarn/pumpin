@@ -124,7 +124,7 @@ export default function WorkoutSummaryPage() {
         <div className="text-center space-y-1">
           <h2 className="text-2xl font-bold text-white">{workoutName}</h2>
           <p className="text-gray-400 text-sm">
-            {date.toLocaleDateString(undefined, {
+            {date.toLocaleDateString("en-US", {
               weekday: "long",
               day: "numeric",
               month: "long",

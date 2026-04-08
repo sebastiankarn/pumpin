@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import type { SessionExercise, SessionSet, WorkoutSession } from "../types";
 import LoadingScreen from "../components/LoadingScreen";
+import WorkoutTimer, { TimerToggleButton } from "../components/WorkoutTimer";
 
 export default function WorkoutSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -69,6 +70,7 @@ export default function WorkoutSessionPage() {
   const [populating, setPopulating] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
 
   const { previousExercises } = usePreviousSession(
     session?.template_day_id ?? null,
@@ -311,7 +313,7 @@ export default function WorkoutSessionPage() {
             {isFinished && (
               <p className="text-gray-500 text-xs">
                 {session?.duration_minutes} min ·{" "}
-                {new Date(session!.started_at).toLocaleDateString()}
+                {new Date(session!.started_at).toLocaleDateString("en-US")}
               </p>
             )}
           </div>
@@ -335,12 +337,15 @@ export default function WorkoutSessionPage() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 -mr-2 text-gray-400 hover:text-danger transition"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1 -mr-2">
+              <TimerToggleButton onClick={() => setShowTimer((v) => !v)} />
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 text-gray-400 hover:text-danger transition"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -568,6 +573,9 @@ export default function WorkoutSessionPage() {
           }
         />
       )}
+
+      {/* Workout Timer */}
+      {showTimer && <WorkoutTimer onClose={() => setShowTimer(false)} />}
 
       {/* Delete Workout Confirmation */}
       {showDeleteConfirm && (

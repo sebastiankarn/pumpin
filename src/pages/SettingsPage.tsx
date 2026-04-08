@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Sun,
   Moon,
-  Monitor,
   LogOut,
   Save,
   X,
@@ -181,7 +180,6 @@ export default function SettingsPage() {
             <div className="flex gap-2">
               {(
                 [
-                  { value: "auto", icon: Monitor, label: "Auto" },
                   { value: "light", icon: Sun, label: "Light" },
                   { value: "dark", icon: Moon, label: "Dark" },
                 ] as const

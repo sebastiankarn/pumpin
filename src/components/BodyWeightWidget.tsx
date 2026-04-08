@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -10,6 +10,8 @@ import {
 import { Plus } from "lucide-react";
 import type { BodyWeightLog } from "../types";
 
+type TimeRange = "week" | "month" | "year" | "total";
+
 export default function BodyWeightWidget({
   logs,
   unit,
@@ -20,6 +22,7 @@ export default function BodyWeightWidget({
   onAdd: (weight: number, unit: "kg" | "lbs") => void;
 }) {
   const [inputValue, setInputValue] = useState("");
+  const [range, setRange] = useState<TimeRange>("month");
 
   const handleAdd = () => {
     const val = parseFloat(inputValue);
@@ -28,18 +31,37 @@ export default function BodyWeightWidget({
     setInputValue("");
   };
 
+  // Filter logs by range
+  const filteredLogs = useMemo(() => {
+    if (range === "total") return logs;
+    const now = new Date();
+    let since: Date;
+    if (range === "week") {
+      since = new Date(now);
+      const dow = now.getDay();
+      since.setDate(now.getDate() - ((dow + 6) % 7));
+      since.setHours(0, 0, 0, 0);
+    } else if (range === "month") {
+      since = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      since = new Date(now.getFullYear(), 0, 1);
+    }
+    return logs.filter((l) => new Date(l.logged_at) >= since);
+  }, [logs, range]);
+
   // Convert to display unit
-  const displayLogs = logs.map((l) => {
+  const displayLogs = filteredLogs.map((l, i) => {
     let w = l.weight;
     if (l.unit !== unit) {
       w = l.unit === "kg" ? w * 2.20462 : w / 2.20462;
     }
     return {
+      _index: i,
       date: new Date(l.logged_at).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       }),
-      weight: Math.round(w * 10) / 10,
+      weight: Math.round(w * 100) / 100,
     };
   });
 
@@ -47,28 +69,43 @@ export default function BodyWeightWidget({
   const first = displayLogs[0];
   const diff =
     latest && first
-      ? Math.round((latest.weight - first.weight) * 10) / 10
+      ? Math.round((latest.weight - first.weight) * 100) / 100
       : null;
 
   return (
     <div className="glass glass-shimmer rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-white font-semibold text-sm">Body Weight</h3>
-        {latest && (
-          <span className="text-gray-400 text-xs">
-            {latest.weight} {unit}
-            {diff !== null && diff !== 0 && (
-              <span
-                className={
-                  diff < 0 ? "text-amber-400 ml-1" : "text-rose-400 ml-1"
-                }
+        <div className="flex items-center gap-2">
+          {latest && (
+            <span className="text-gray-400 text-xs">
+              {latest.weight.toFixed(2)} {unit}
+              {diff !== null && diff !== 0 && (
+                <span
+                  className={
+                    diff < 0 ? "text-amber-400 ml-1" : "text-rose-400 ml-1"
+                  }
+                >
+                  {diff > 0 ? "+" : ""}
+                  {diff.toFixed(2)}
+                </span>
+              )}
+            </span>
+          )}
+          <div className="flex bg-background/50 rounded-lg p-0.5 text-xs">
+            {(["week", "month", "year", "total"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-2 py-1 rounded-md capitalize transition ${
+                  range === r ? "bg-primary/20 text-primary" : "text-gray-400"
+                }`}
               >
-                {diff > 0 ? "+" : ""}
-                {diff}
-              </span>
-            )}
-          </span>
-        )}
+                {r === "total" ? "All" : r.charAt(0).toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Quick log */}
@@ -106,6 +143,7 @@ export default function BodyWeightWidget({
               tick={{ fontSize: 10, fill: "#6b7280" }}
               tickLine={false}
               axisLine={false}
+              allowDuplicatedCategory={false}
               interval="preserveStartEnd"
             />
             <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
@@ -118,7 +156,10 @@ export default function BodyWeightWidget({
               }}
               labelStyle={{ color: "#9ca3af" }}
               itemStyle={{ color: "#f97316" }}
-              formatter={(value) => [`${value} ${unit}`, "Weight"]}
+              formatter={(value) => [
+                `${Number(value).toFixed(2)} ${unit}`,
+                "Weight",
+              ]}
             />
             <Area
               type="monotone"

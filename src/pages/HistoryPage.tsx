@@ -23,7 +23,7 @@ export default function HistoryPage() {
   const monthLabel = (key: string) => {
     const [year, month] = key.split("-");
     return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
-      undefined,
+      "en-US",
       { year: "numeric", month: "long" },
     );
   };
@@ -72,7 +72,7 @@ export default function HistoryPage() {
                         </p>
                         <p className="text-gray-500 text-xs">
                           {new Date(session.started_at).toLocaleDateString(
-                            undefined,
+                            "en-US",
                             {
                               weekday: "short",
                               day: "numeric",

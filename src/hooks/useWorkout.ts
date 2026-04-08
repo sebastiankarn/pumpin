@@ -360,7 +360,9 @@ function categorize(muscleGroup: string): keyof VolumeByCategory {
   return "other";
 }
 
-export function useVolumeStats(range: "week" | "month" | "year" = "month") {
+export function useVolumeStats(
+  range: "week" | "month" | "year" | "total" = "month",
+) {
   const { user } = useAuth();
   const [chartData, setChartData] = useState<VolumeDataPoint[]>([]);
   const [volumeByCategory, setVolumeByCategory] = useState<VolumeByCategory>({
@@ -378,7 +380,7 @@ export function useVolumeStats(range: "week" | "month" | "year" = "month") {
       setLoading(true);
 
       const now = new Date();
-      let since: Date;
+      let since: Date | null;
       if (range === "week") {
         since = new Date(now);
         const dow = now.getDay();
@@ -386,18 +388,25 @@ export function useVolumeStats(range: "week" | "month" | "year" = "month") {
         since.setHours(0, 0, 0, 0);
       } else if (range === "month") {
         since = new Date(now.getFullYear(), now.getMonth(), 1);
-      } else {
+      } else if (range === "year") {
         since = new Date(now.getFullYear(), 0, 1);
+      } else {
+        since = null;
       }
 
       // Fetch finished sessions in range
-      const { data: sessions } = await supabase
+      let query = supabase
         .from("workout_sessions")
         .select("id, started_at, duration_minutes")
         .eq("user_id", user.id)
         .not("finished_at", "is", null)
-        .gte("started_at", since.toISOString())
         .order("started_at");
+
+      if (since) {
+        query = query.gte("started_at", since.toISOString());
+      }
+
+      const { data: sessions } = await query;
 
       if (!sessions || sessions.length === 0) {
         setChartData([]);

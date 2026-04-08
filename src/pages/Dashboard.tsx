@@ -20,7 +20,6 @@ import {
   SkipForward,
   Sun,
   Moon,
-  Monitor,
   Trash2,
 } from "lucide-react";
 import { syncPendingChanges } from "../lib/sync";
@@ -76,9 +75,9 @@ export default function Dashboard() {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [promptName, setPromptName] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [volumeRange, setVolumeRange] = useState<"week" | "month" | "year">(
-    "month",
-  );
+  const [volumeRange, setVolumeRange] = useState<
+    "week" | "month" | "year" | "total"
+  >("month");
   const {
     chartData,
     volumeByCategory,
@@ -218,24 +217,14 @@ export default function Dashboard() {
               </span>
             )}
             <button
-              onClick={() =>
-                setMode(
-                  mode === "auto"
-                    ? "light"
-                    : mode === "light"
-                      ? "dark"
-                      : "auto",
-                )
-              }
+              onClick={() => setMode(mode === "light" ? "dark" : "light")}
               className="text-gray-400 hover:text-white transition p-2"
               title={`Theme: ${mode}`}
             >
               {mode === "light" ? (
                 <Sun className="w-4.5 h-4.5" />
-              ) : mode === "dark" ? (
-                <Moon className="w-4.5 h-4.5" />
               ) : (
-                <Monitor className="w-4.5 h-4.5" />
+                <Moon className="w-4.5 h-4.5" />
               )}
             </button>
           </div>
@@ -411,26 +400,12 @@ export default function Dashboard() {
 
         {/* Progress chart */}
         {widgets.includes("chart") && !volumeLoading && (
-          <div className="space-y-2">
-            <div className="flex justify-end">
-              <div className="flex bg-white/5 rounded-lg overflow-hidden text-xs">
-                {(["week", "month", "year"] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setVolumeRange(r)}
-                    className={`px-3 py-1.5 capitalize transition ${
-                      volumeRange === r
-                        ? "bg-primary/20 text-primary"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <VolumeChart data={chartData} unit={weightUnit} />
-          </div>
+          <VolumeChart
+            data={chartData}
+            unit={weightUnit}
+            range={volumeRange}
+            onRangeChange={setVolumeRange}
+          />
         )}
 
         {/* Recent Workouts */}
@@ -484,7 +459,7 @@ export default function Dashboard() {
                         </p>
                         <p className="text-gray-500 text-[11px] mt-1">
                           {new Date(session.started_at).toLocaleDateString(
-                            undefined,
+                            "en-US",
                             {
                               weekday: "short",
                               day: "numeric",
