@@ -37,14 +37,14 @@ export default function BodyWeightWidget({
     const now = new Date();
     let since: Date;
     if (range === "week") {
-      since = new Date(now);
-      const dow = now.getDay();
-      since.setDate(now.getDate() - ((dow + 6) % 7));
+      since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       since.setHours(0, 0, 0, 0);
     } else if (range === "month") {
-      since = new Date(now.getFullYear(), now.getMonth(), 1);
+      since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      since.setHours(0, 0, 0, 0);
     } else {
-      since = new Date(now.getFullYear(), 0, 1);
+      since = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      since.setHours(0, 0, 0, 0);
     }
     return logs.filter((l) => new Date(l.logged_at) >= since);
   }, [logs, range]);

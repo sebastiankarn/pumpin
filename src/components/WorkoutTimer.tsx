@@ -24,6 +24,8 @@ function presetLabel(s: number) {
   return s >= 60 ? `${s / 60}m` : `${s}s`;
 }
 
+const TIMER_STORAGE_KEY = "workout-set-timer";
+
 export default function WorkoutTimer({ onClose }: { onClose: () => void }) {
   const [minimized, setMinimized] = useState(false);
 
@@ -38,6 +40,7 @@ export default function WorkoutTimer({ onClose }: { onClose: () => void }) {
     switchMode,
     setCountdownDuration,
   } = useTimer({
+    storageKey: TIMER_STORAGE_KEY,
     onComplete() {
       // Vibrate if available
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
@@ -108,6 +111,7 @@ export default function WorkoutTimer({ onClose }: { onClose: () => void }) {
               onClick={() => {
                 reset();
                 setMinimized(false);
+                sessionStorage.removeItem(TIMER_STORAGE_KEY);
                 onClose();
               }}
               className="p-1.5 text-gray-400 hover:text-gray-300 transition"

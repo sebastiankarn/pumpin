@@ -382,14 +382,14 @@ export function useVolumeStats(
       const now = new Date();
       let since: Date | null;
       if (range === "week") {
-        since = new Date(now);
-        const dow = now.getDay();
-        since.setDate(now.getDate() - ((dow + 6) % 7));
+        since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         since.setHours(0, 0, 0, 0);
       } else if (range === "month") {
-        since = new Date(now.getFullYear(), now.getMonth(), 1);
+        since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        since.setHours(0, 0, 0, 0);
       } else if (range === "year") {
-        since = new Date(now.getFullYear(), 0, 1);
+        since = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        since.setHours(0, 0, 0, 0);
       } else {
         since = null;
       }
@@ -610,4 +610,69 @@ export function usePersonalRecords(
   );
 
   return { isPR };
+}
+
+// Returns a map of exerciseId → best { weight, reps } across all finished sessions
+export function useExercisePRs() {
+  const { user } = useAuth();
+  const [prs, setPrs] = useState<Map<string, { weight: number; reps: number }>>(
+    new Map(),
+  );
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setPrs(new Map());
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      setLoading(true);
+
+      // Fetch finished session IDs for this user
+      const { data: sessions } = await supabase
+        .from("workout_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .not("finished_at", "is", null);
+
+      if (!sessions || sessions.length === 0) {
+        setPrs(new Map());
+        setLoading(false);
+        return;
+      }
+
+      const sessionIds = sessions.map((s) => s.id);
+
+      // Fetch all session_exercises with their sets for those sessions
+      const { data: rows } = await supabase
+        .from("session_exercises")
+        .select("exercise_id, sets:session_sets(weight, reps)")
+        .in("session_id", sessionIds);
+
+      const map = new Map<string, { weight: number; reps: number }>();
+      for (const row of rows ?? []) {
+        const sets = (row.sets ?? []) as {
+          weight: number | null;
+          reps: number | null;
+        }[];
+        for (const s of sets) {
+          if (s.weight && s.reps) {
+            const current = map.get(row.exercise_id);
+            if (
+              !current ||
+              s.weight > current.weight ||
+              (s.weight === current.weight && s.reps > current.reps)
+            ) {
+              map.set(row.exercise_id, { weight: s.weight, reps: s.reps });
+            }
+          }
+        }
+      }
+      setPrs(map);
+      setLoading(false);
+    })();
+  }, [user]);
+
+  return { prs, loading };
 }

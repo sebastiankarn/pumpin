@@ -57,7 +57,9 @@ export default function WorkoutSessionPage() {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [pausedAt, setPausedAt] = useState(0);
+  // Track total paused time so the elapsed counter never drifts
+  const totalPausedMsRef = useRef(0); // total ms spent paused
+  const pauseStartMsRef = useRef<number | null>(null); // timestamp when current pause started
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [swapTarget, setSwapTarget] = useState<SessionExercise | null>(null);
   const [supersetMode, setSupersetMode] = useState<{
@@ -70,7 +72,17 @@ export default function WorkoutSessionPage() {
   const [populating, setPopulating] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showTimer, setShowTimer] = useState(false);
+  const [showTimer, setShowTimer] = useState(() => {
+    // Re-open the timer panel if it was open (and has active state) before reload
+    try {
+      const saved = sessionStorage.getItem("workout-set-timer");
+      if (!saved) return false;
+      const data = JSON.parse(saved);
+      return data.running || (data.seconds ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  });
 
   const { previousExercises } = usePreviousSession(
     session?.template_day_id ?? null,
@@ -92,6 +104,25 @@ export default function WorkoutSessionPage() {
         .single();
       if (!sessionData || cancelled) return;
       setSession(sessionData);
+
+      // If we restored a paused state from sessionStorage, compute and show
+      // the elapsed time at the moment of pausing so it's not stuck at 0:00
+      const savedPause = sessionStorage.getItem(`workout-pause-${sessionId}`);
+      if (savedPause) {
+        try {
+          const data = JSON.parse(savedPause);
+          if (data.paused && data.pauseStartMs) {
+            const sessionStart = new Date(sessionData.started_at).getTime();
+            const restoredElapsed = Math.floor(
+              (data.pauseStartMs - sessionStart - (data.totalPausedMs ?? 0)) /
+                1000,
+            );
+            if (restoredElapsed > 0) setElapsed(restoredElapsed);
+          }
+        } catch {
+          // ignore corrupt data
+        }
+      }
 
       // Skip population entirely for blank sessions
       if (isBlank) {
@@ -176,23 +207,72 @@ export default function WorkoutSessionPage() {
     };
   }, [sessionId, reloadExercises, isBlank]);
 
+  // Restore pause state from sessionStorage (survives tab switches / background on mobile)
+  useEffect(() => {
+    if (!sessionId) return;
+    const saved = sessionStorage.getItem(`workout-pause-${sessionId}`);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        totalPausedMsRef.current = data.totalPausedMs ?? 0;
+        if (data.paused && data.pauseStartMs) {
+          pauseStartMsRef.current = data.pauseStartMs;
+          setPaused(true);
+        }
+      } catch {
+        // ignore corrupt data
+      }
+    }
+  }, [sessionId]);
+
+  // Persist pause state so it survives page hide/show
+  useEffect(() => {
+    if (!sessionId) return;
+    sessionStorage.setItem(
+      `workout-pause-${sessionId}`,
+      JSON.stringify({
+        paused,
+        pauseStartMs: pauseStartMsRef.current,
+        totalPausedMs: totalPausedMsRef.current,
+      }),
+    );
+  }, [paused, sessionId]);
+
   // Timer
   useEffect(() => {
     if (!session || session.finished_at || paused) return;
-    const startTime = new Date(session.started_at).getTime();
+    const sessionStart = new Date(session.started_at).getTime();
     const tick = () => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+      setElapsed(
+        Math.floor(
+          (Date.now() - sessionStart - totalPausedMsRef.current) / 1000,
+        ),
+      );
     };
     tick();
     const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
+    // Re-sync when the page becomes visible after being backgrounded
+    const handleVisibility = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [session, paused]);
 
   const togglePause = () => {
     if (paused) {
+      // Resume: add the duration of this pause to the running total
+      if (pauseStartMsRef.current !== null) {
+        totalPausedMsRef.current += Date.now() - pauseStartMsRef.current;
+        pauseStartMsRef.current = null;
+      }
       setPaused(false);
     } else {
-      setPausedAt(elapsed);
+      // Pause: record when we paused
+      pauseStartMsRef.current = Date.now();
       setPaused(true);
     }
   };
@@ -306,7 +386,7 @@ export default function WorkoutSessionPage() {
                 )}
                 <Timer className="w-3 h-3" />
                 <span className={`tracking-wide ${paused ? "opacity-50" : ""}`}>
-                  {formatTime(paused ? pausedAt : elapsed)}
+                  {formatTime(elapsed)}
                 </span>
               </button>
             )}
@@ -338,7 +418,7 @@ export default function WorkoutSessionPage() {
             </div>
           ) : (
             <div className="flex items-center gap-1 -mr-2">
-              <TimerToggleButton onClick={() => setShowTimer((v) => !v)} />
+              <TimerToggleButton onClick={() => setShowTimer((v: boolean) => !v)} />
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2 text-gray-400 hover:text-danger transition"
@@ -652,6 +732,7 @@ function ExerciseCard({
 }) {
   const sets = sessionExercise.sets ?? [];
   const [showVideo, setShowVideo] = useState(false);
+  const [expandedNoteIndex, setExpandedNoteIndex] = useState<number | null>(null);
   const videoUrl = sessionExercise.exercise?.video_url;
   const exType = sessionExercise.exercise?.exercise_type ?? "strength";
   const isCardio = exType === "cardio";
@@ -755,45 +836,63 @@ function ExerciseCard({
                   <span className="col-span-3">Note</span>
                 </div>
                 {previousSets.map((ps, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-12 gap-1 text-xs text-gray-400 bg-background rounded px-1 py-1"
-                  >
-                    <span className="col-span-1 text-gray-500">{i + 1}</span>
-                    {isCardio ? (
-                      <>
-                        <span className="col-span-2">
-                          {ps.duration_seconds
-                            ? Math.round(ps.duration_seconds / 60)
-                            : "–"}
-                        </span>
-                        <span className="col-span-2">
-                          {ps.distance_km ?? "–"}
-                        </span>
-                        <span className="col-span-2">{ps.calories ?? "–"}</span>
-                        <span className="col-span-2">
-                          {ps.avg_heart_rate ?? "–"}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="col-span-2">{ps.weight ?? "–"}</span>
-                        <span className="col-span-2">
-                          {ps.reps != null
-                            ? isDuration
-                              ? `${ps.reps}s`
-                              : ps.reps
-                            : "–"}
-                        </span>
-                        <span className="col-span-2">{ps.rpe ?? "–"}</span>
-                        <span className="col-span-2">
-                          {ps.rest_seconds ? `${ps.rest_seconds}s` : "–"}
-                        </span>
-                      </>
+                  <div key={i} className="space-y-1">
+                    <div
+                      className="grid grid-cols-12 gap-1 text-xs text-gray-400 bg-background rounded px-1 py-1"
+                    >
+                      <span className="col-span-1 text-gray-500">{i + 1}</span>
+                      {isCardio ? (
+                        <>
+                          <span className="col-span-2">
+                            {ps.duration_seconds
+                              ? Math.round(ps.duration_seconds / 60)
+                              : "–"}
+                          </span>
+                          <span className="col-span-2">
+                            {ps.distance_km ?? "–"}
+                          </span>
+                          <span className="col-span-2">{ps.calories ?? "–"}</span>
+                          <span className="col-span-2">
+                            {ps.avg_heart_rate ?? "–"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="col-span-2">{ps.weight ?? "–"}</span>
+                          <span className="col-span-2">
+                            {ps.reps != null
+                              ? isDuration
+                                ? `${ps.reps}s`
+                                : ps.reps
+                              : "–"}
+                          </span>
+                          <span className="col-span-2">{ps.rpe ?? "–"}</span>
+                          <span className="col-span-2">
+                            {ps.rest_seconds ? `${ps.rest_seconds}s` : "–"}
+                          </span>
+                        </>
+                      )}
+                      {ps.notes ? (
+                        <button
+                          className="col-span-3 text-left truncate text-primary/80 hover:text-primary transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedNoteIndex(
+                              expandedNoteIndex === i ? null : i,
+                            );
+                          }}
+                        >
+                          {ps.notes}
+                        </button>
+                      ) : (
+                        <span className="col-span-3">–</span>
+                      )}
+                    </div>
+                    {expandedNoteIndex === i && ps.notes && (
+                      <div className="mx-1 px-2 py-1.5 bg-surface-light rounded text-xs text-gray-300 break-words">
+                        {ps.notes}
+                      </div>
                     )}
-                    <span className="col-span-3 truncate">
-                      {ps.notes || "–"}
-                    </span>
                   </div>
                 ))}
               </div>

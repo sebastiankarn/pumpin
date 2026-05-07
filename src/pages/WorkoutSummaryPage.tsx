@@ -119,20 +119,22 @@ export default function WorkoutSummaryPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full space-y-6 pb-24 stagger">
+      <main className="flex-1 px-4 py-3 max-w-lg mx-auto w-full space-y-3 pb-24 stagger">
         {/* Title card */}
-        <div className="text-center space-y-1">
-          <h2 className="text-2xl font-bold text-white">{workoutName}</h2>
-          <p className="text-gray-400 text-sm">
-            {date.toLocaleDateString("en-US", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white">{workoutName}</h2>
+            <p className="text-gray-500 text-xs">
+              {date.toLocaleDateString("en-US", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          </div>
           {session.duration_minutes && (
-            <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
+            <p className="text-gray-500 text-sm flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
               {session.duration_minutes} min
             </p>
@@ -144,7 +146,7 @@ export default function WorkoutSummaryPage() {
           totalVolume={totalVolume}
           totalSets={totalSets}
           totalReps={totalReps}
-          exerciseCount={strengthExercises.length}
+          exerciseCount={sessionExercises.length}
           hasStrength={strengthExercises.length > 0}
           totalCardioMin={totalCardioMin}
           totalDistance={totalDistance}
@@ -155,8 +157,8 @@ export default function WorkoutSummaryPage() {
         />
 
         {/* Exercise breakdown */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             Exercise Breakdown
           </h3>
           {sessionExercises.map((se) => (
@@ -237,15 +239,15 @@ function ExerciseRow({
   }
 
   return (
-    <div className="glass rounded-2xl p-4">
+    <div className="glass rounded-xl p-3">
       <button
         onClick={() => setExpanded((p) => !p)}
         className="w-full flex items-center gap-2"
       >
         {exerciseHasPR && (
-          <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />
+          <Trophy className="w-4 h-4 shrink-0 text-yellow-400" />
         )}
-        <h4 className="text-white font-medium flex-1 text-left">
+        <h4 className="text-white font-medium flex-1 text-left text-sm">
           {ex?.name ?? "Exercise"}
         </h4>
         <span className="text-xs text-gray-500 mr-1">{sets.length} sets</span>
@@ -258,7 +260,7 @@ function ExerciseRow({
 
       {/* Compact summary (always visible) */}
       {isCardio ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mt-2">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mt-2 pl-6">
           {totalMin > 0 && (
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" /> {Math.round(totalMin)} min
@@ -282,7 +284,7 @@ function ExerciseRow({
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-between text-sm text-gray-400 mt-2">
+        <div className="flex items-center justify-between text-sm text-gray-400 mt-2 pl-6">
           <span>
             <span className="text-white font-medium">
               {avgWeight} {unit}
@@ -364,12 +366,12 @@ function SummaryStatsBar({
   const animCalories = useCountUp(totalCalories);
 
   return (
-    <div className="glass glass-shimmer rounded-2xl p-5">
+    <div className="glass glass-shimmer rounded-2xl p-3">
       {hasStrength && (
         <>
           <div className="grid grid-cols-4 divide-x divide-white/5">
             <div className="text-center px-1">
-              <p className="text-xl font-black text-primary tabular-nums">
+              <p className="text-lg font-black text-primary tabular-nums">
                 {formatVolume(totalVolume)}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -377,7 +379,7 @@ function SummaryStatsBar({
               </p>
             </div>
             <div className="text-center px-1">
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-lg font-black text-white tabular-nums">
                 {animSets}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -385,7 +387,7 @@ function SummaryStatsBar({
               </p>
             </div>
             <div className="text-center px-1">
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-lg font-black text-white tabular-nums">
                 {animReps}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -393,7 +395,7 @@ function SummaryStatsBar({
               </p>
             </div>
             <div className="text-center px-1">
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-lg font-black text-white tabular-nums">
                 {animExercises}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -402,7 +404,7 @@ function SummaryStatsBar({
             </div>
           </div>
           {(hasCardio || prCount > 0) && (
-            <div className="gradient-divider my-3" />
+            <div className="gradient-divider my-2" />
           )}
         </>
       )}
@@ -412,7 +414,7 @@ function SummaryStatsBar({
             className={`grid grid-cols-${totalCalories > 0 ? 3 : 2} divide-x divide-white/5`}
           >
             <div className="text-center px-1">
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-lg font-black text-white tabular-nums">
                 {animCardioMin}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -420,7 +422,7 @@ function SummaryStatsBar({
               </p>
             </div>
             <div className="text-center px-1">
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-lg font-black text-white tabular-nums">
                 {totalDistance.toFixed(1)}
               </p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -429,7 +431,7 @@ function SummaryStatsBar({
             </div>
             {totalCalories > 0 && (
               <div className="text-center px-1">
-                <p className="text-xl font-black text-white tabular-nums">
+                <p className="text-lg font-black text-white tabular-nums">
                   {animCalories}
                 </p>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">
@@ -438,7 +440,7 @@ function SummaryStatsBar({
               </div>
             )}
           </div>
-          {prCount > 0 && <div className="gradient-divider my-3" />}
+          {prCount > 0 && <div className="gradient-divider my-2" />}
         </>
       )}
       {prCount > 0 && (

@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useExercises } from "../hooks/useData";
-import { ArrowLeft, Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { useExercises, useUserProfile } from "../hooks/useData";
+import { useExercisePRs } from "../hooks/useWorkout";
+import { ArrowLeft, Plus, Search, Pencil, Trash2, Trophy } from "lucide-react";
 import type { Exercise, ExerciseType } from "../types";
 
 export default function ExercisesPage() {
   const navigate = useNavigate();
   const { exercises, loading, addExercise, updateExercise, deleteExercise } =
     useExercises();
+  const { profile } = useUserProfile();
+  const unit = profile?.weight_unit ?? "kg";
+  const { prs } = useExercisePRs();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -231,7 +235,7 @@ export default function ExercisesPage() {
                             <p className="text-white text-sm truncate">
                               {exercise.name}
                             </p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {exercise.exercise_type === "cardio" && (
                                 <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-full">
                                   cardio
@@ -252,6 +256,13 @@ export default function ExercisesPage() {
                                 >
                                   ▶ Video
                                 </a>
+                              )}
+                              {prs.get(exercise.id) && (
+                                <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">
+                                  <Trophy className="w-2.5 h-2.5" />
+                                  {prs.get(exercise.id)!.weight} {unit} ×{" "}
+                                  {prs.get(exercise.id)!.reps}
+                                </span>
                               )}
                             </div>
                           </div>

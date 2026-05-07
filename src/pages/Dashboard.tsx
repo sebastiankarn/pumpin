@@ -442,7 +442,7 @@ export default function Dashboard() {
                           e.stopPropagation();
                           setDeleteConfirmId(session.id);
                         }}
-                        className="absolute top-2 right-2 p-1 text-gray-600 opacity-0 group-hover:opacity-100 hover:text-danger transition"
+                        className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-gray-500 scale-0 group-hover:scale-100 hover:text-danger transition-transform origin-center"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
