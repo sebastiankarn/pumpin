@@ -57,7 +57,7 @@ export function useTimer(options?: UseTimerOptions) {
     // Only resume if time is still left (countdown) or it was a stopwatch
     if (saved.mode === "countdown" && seconds <= 0) return;
     setRunning(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function useTimer(options?: UseTimerOptions) {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, mode]);
 
   // Persist timer state whenever anything relevant changes

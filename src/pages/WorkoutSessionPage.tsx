@@ -418,7 +418,9 @@ export default function WorkoutSessionPage() {
             </div>
           ) : (
             <div className="flex items-center gap-1 -mr-2">
-              <TimerToggleButton onClick={() => setShowTimer((v: boolean) => !v)} />
+              <TimerToggleButton
+                onClick={() => setShowTimer((v: boolean) => !v)}
+              />
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2 text-gray-400 hover:text-danger transition"
@@ -732,7 +734,9 @@ function ExerciseCard({
 }) {
   const sets = sessionExercise.sets ?? [];
   const [showVideo, setShowVideo] = useState(false);
-  const [expandedNoteIndex, setExpandedNoteIndex] = useState<number | null>(null);
+  const [expandedNoteIndex, setExpandedNoteIndex] = useState<number | null>(
+    null,
+  );
   const videoUrl = sessionExercise.exercise?.video_url;
   const exType = sessionExercise.exercise?.exercise_type ?? "strength";
   const isCardio = exType === "cardio";
@@ -837,9 +841,7 @@ function ExerciseCard({
                 </div>
                 {previousSets.map((ps, i) => (
                   <div key={i} className="space-y-1">
-                    <div
-                      className="grid grid-cols-12 gap-1 text-xs text-gray-400 bg-background rounded px-1 py-1"
-                    >
+                    <div className="grid grid-cols-12 gap-1 text-xs text-gray-400 bg-background rounded px-1 py-1">
                       <span className="col-span-1 text-gray-500">{i + 1}</span>
                       {isCardio ? (
                         <>
@@ -851,7 +853,9 @@ function ExerciseCard({
                           <span className="col-span-2">
                             {ps.distance_km ?? "–"}
                           </span>
-                          <span className="col-span-2">{ps.calories ?? "–"}</span>
+                          <span className="col-span-2">
+                            {ps.calories ?? "–"}
+                          </span>
                           <span className="col-span-2">
                             {ps.avg_heart_rate ?? "–"}
                           </span>

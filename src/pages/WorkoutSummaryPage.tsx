@@ -33,6 +33,38 @@ export default function WorkoutSummaryPage() {
   );
   const { isPR } = usePersonalRecords(sessionId ?? null, exerciseIds);
 
+  // Must be above early returns — hooks cannot be called conditionally
+  const muscleGroups = useMemo(() => {
+    const map = new Map<string, { category: string; volume: number }>();
+    for (const se of sessionExercises) {
+      const mg = se.exercise?.muscle_group;
+      if (!mg) continue;
+      const mgLower = mg.toLowerCase();
+      let cat = "other";
+      if (["chest", "shoulders", "triceps"].some((m) => mgLower.includes(m)))
+        cat = "push";
+      else if (
+        ["back", "biceps", "forearms"].some((m) => mgLower.includes(m))
+      )
+        cat = "pull";
+      else if (
+        ["quads", "hamstrings", "glutes", "calves", "legs"].some((m) =>
+          mgLower.includes(m),
+        )
+      )
+        cat = "legs";
+      const vol = (se.sets ?? []).reduce(
+        (sum, s) => sum + (s.weight && s.reps ? s.weight * s.reps : 0),
+        0,
+      );
+      const existing = map.get(mg);
+      map.set(mg, { category: cat, volume: (existing?.volume ?? 0) + vol });
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[1].volume - a[1].volume)
+      .map(([name, { category }]) => ({ name, category }));
+  }, [sessionExercises]);
+
   useEffect(() => {
     if (!sessionId) return;
     (async () => {
@@ -120,25 +152,39 @@ export default function WorkoutSummaryPage() {
       </header>
 
       <main className="flex-1 px-4 py-3 max-w-lg mx-auto w-full space-y-3 pb-24 stagger">
-        {/* Title card */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-white">{workoutName}</h2>
-            <p className="text-gray-500 text-xs">
-              {date.toLocaleDateString("en-US", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
+        {/* Hero Banner */}
+        <div className="btn-gradient btn-gradient-glow relative rounded-2xl overflow-hidden">
+          <div className="relative px-5 py-5">
+            {prCount > 0 && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <Trophy className="w-3.5 h-3.5 text-white/80" />
+                <span className="text-xs font-semibold text-white/80 uppercase tracking-wide">
+                  {prCount} personal record{prCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+            <h2 className="text-2xl font-black text-white mb-3 leading-tight">
+              {workoutName}
+            </h2>
+            <div className="flex items-center gap-3 text-sm text-white/70">
+              <span>
+                {date.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </span>
+              {session.duration_minutes && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {session.duration_minutes} min
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          {session.duration_minutes && (
-            <p className="text-gray-500 text-sm flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              {session.duration_minutes} min
-            </p>
-          )}
         </div>
 
         {/* Stats */}
@@ -155,6 +201,20 @@ export default function WorkoutSummaryPage() {
           prCount={prCount}
           formatVolume={formatVolume}
         />
+
+        {/* Muscle group chips */}
+        {muscleGroups.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {muscleGroups.map(({ name, category }) => (
+              <span
+                key={name}
+                className={`muscle-chip muscle-chip-${category}`}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Exercise breakdown */}
         <div className="space-y-2">
@@ -244,9 +304,9 @@ function ExerciseRow({
         onClick={() => setExpanded((p) => !p)}
         className="w-full flex items-center gap-2"
       >
-        {exerciseHasPR && (
-          <Trophy className="w-4 h-4 shrink-0 text-yellow-400" />
-        )}
+        <Trophy
+          className={`w-4 h-4 shrink-0 transition-opacity ${exerciseHasPR ? "text-yellow-400" : "opacity-0 pointer-events-none"}`}
+        />
         <h4 className="text-white font-medium flex-1 text-left text-sm">
           {ex?.name ?? "Exercise"}
         </h4>
@@ -442,14 +502,6 @@ function SummaryStatsBar({
           </div>
           {prCount > 0 && <div className="gradient-divider my-2" />}
         </>
-      )}
-      {prCount > 0 && (
-        <div className="flex items-center justify-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-semibold text-amber-400">
-            {prCount} Personal Record{prCount !== 1 ? "s" : ""}!
-          </span>
-        </div>
       )}
     </div>
   );

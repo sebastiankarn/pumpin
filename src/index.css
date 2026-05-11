@@ -82,6 +82,28 @@
 .light .border-gray-800 { border-color: #d6d3d1; }
 .light .bg-background\/95 { background-color: rgb(240 238 236 / 0.95); }
 .light .bg-background\/50 { background-color: rgb(240 238 236 / 0.5); }
+/* Pastel text colors → darker variants for light mode contrast */
+.light .text-amber-400  { color: #b45309; } /* amber-700 */
+
+/* ── Muscle group chip pills ── */
+.muscle-chip {
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-width: 1px;
+  border-style: solid;
+}
+/* Dark mode (default) */
+.muscle-chip-push    { background: rgb(249 115 22 / 0.15); color: #fdba74; border-color: rgb(249 115 22 / 0.25); }
+.muscle-chip-pull    { background: rgb(59 130 246 / 0.15); color: #93c5fd; border-color: rgb(59 130 246 / 0.25); }
+.muscle-chip-legs    { background: rgb(34 197 94 / 0.15);  color: #86efac; border-color: rgb(34 197 94 / 0.25);  }
+.muscle-chip-other   { background: rgb(168 85 247 / 0.15); color: #d8b4fe; border-color: rgb(168 85 247 / 0.25); }
+/* Light mode — warmer, more opaque tones that match the stone/orange theme */
+.light .muscle-chip-push  { background: #fff3e0; color: #c2410c; border-color: #fdba74; }
+.light .muscle-chip-pull  { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+.light .muscle-chip-legs  { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.light .muscle-chip-other { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
 
 /* ── Glass card system ── */
 .glass {
