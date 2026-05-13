@@ -755,28 +755,36 @@ function ExerciseCard({
       className={`glass glass-shimmer rounded-2xl overflow-hidden ${!isFinished ? "accent-stripe" : ""}`}
     >
       {/* Exercise Header */}
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center gap-3 text-left"
-      >
-        <div className="flex-1">
-          <p className="text-white font-medium">
-            {sessionExercise.exercise?.name ?? "Unknown Exercise"}
-          </p>
-          <p className="text-gray-500 text-xs">
-            {sessionExercise.exercise?.muscle_group}
-            {sessionExercise.swapped_from_exercise_id && (
-              <span className="text-warning ml-2">· swapped</span>
-            )}
-          </p>
-        </div>
-        <span className="text-gray-500 text-sm">{sets.length} sets</span>
-        {isExpanded ? (
-          <ChevronUp className="w-4 h-4 text-gray-500" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-500" />
+      <div className="w-full px-4 py-3 flex items-center gap-3">
+        <button onClick={onToggle} className="flex-1 flex items-center gap-3 text-left min-w-0">
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-medium truncate">
+              {sessionExercise.exercise?.name ?? "Unknown Exercise"}
+            </p>
+            <p className="text-gray-500 text-xs">
+              {sessionExercise.exercise?.muscle_group}
+              {sessionExercise.swapped_from_exercise_id && (
+                <span className="text-warning ml-2">· swapped</span>
+              )}
+            </p>
+          </div>
+          <span className="text-gray-500 text-sm shrink-0">{sets.length} sets</span>
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+          )}
+        </button>
+        {!isFinished && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSwap(); }}
+            className="shrink-0 p-2 text-gray-400 hover:text-warning transition rounded-lg"
+            title="Swap exercise"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
         )}
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
@@ -953,13 +961,6 @@ function ExerciseCard({
                 previousSet={previousSets[sets.length] ?? sets[sets.length - 1]}
                 onAddSet={onAddSet}
               />
-              <button
-                onClick={onSwap}
-                className="flex items-center gap-1 text-gray-400 hover:text-warning text-sm px-3 py-2 bg-surface-light rounded-lg transition"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Swap
-              </button>
               <button
                 onClick={onRemove}
                 className="flex items-center gap-1 text-gray-400 hover:text-danger text-sm px-3 py-2 bg-surface-light rounded-lg transition"

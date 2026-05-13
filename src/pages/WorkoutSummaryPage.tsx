@@ -43,9 +43,7 @@ export default function WorkoutSummaryPage() {
       let cat = "other";
       if (["chest", "shoulders", "triceps"].some((m) => mgLower.includes(m)))
         cat = "push";
-      else if (
-        ["back", "biceps", "forearms"].some((m) => mgLower.includes(m))
-      )
+      else if (["back", "biceps", "forearms"].some((m) => mgLower.includes(m)))
         cat = "pull";
       else if (
         ["quads", "hamstrings", "glutes", "calves", "legs"].some((m) =>

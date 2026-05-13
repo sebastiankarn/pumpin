@@ -160,7 +160,7 @@ export function useSessionExercises(sessionId: string | null) {
       superset_group: supersetGroup ?? null,
     };
 
-    mutateWithOffline("session_exercises", "INSERT", newItem, () =>
+    await mutateWithOffline("session_exercises", "INSERT", newItem, () =>
       supabase.from("session_exercises").insert(newItem),
     );
 
@@ -179,7 +179,7 @@ export function useSessionExercises(sessionId: string | null) {
       swapped_from_exercise_id: originalExerciseId,
     };
 
-    mutateWithOffline("session_exercises", "UPDATE", updates, () =>
+    await mutateWithOffline("session_exercises", "UPDATE", updates, () =>
       supabase
         .from("session_exercises")
         .update({
