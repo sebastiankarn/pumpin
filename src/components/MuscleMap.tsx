@@ -1,7 +1,7 @@
-import Model from "react-body-highlighter";
+import Model, { type Muscle } from "react-body-highlighter";
 
 // Mapping from the app's muscle_group strings → react-body-highlighter muscle names
-const MUSCLE_MAP: Record<string, string[]> = {
+const MUSCLE_MAP: Record<string, Muscle[]> = {
   Chest: ["chest"],
   Back: ["upper-back", "lower-back", "trapezius"],
   Shoulders: ["front-deltoids", "back-deltoids"],
