@@ -36,7 +36,6 @@ export default function WorkoutSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isScheduled = searchParams.get("scheduled") !== "false";
   const isBlank = searchParams.get("blank") === "true";
   const { exercises: allExercises } = useExercises();
   const {
@@ -293,8 +292,11 @@ export default function WorkoutSessionPage() {
       : Math.round(elapsed / 60);
     await finishSession(sessionId, durationMinutes);
 
-    // Auto-advance to next day only for scheduled workouts
-    if (isScheduled && profile && days.length > 0) {
+    // Auto-advance only if this session was the currently-scheduled day.
+    // Checking template_day_id (stored in DB) avoids the bug where navigating
+    // away and returning strips the ?scheduled=false URL param.
+    const scheduledDay = days[profile?.current_day_index ?? 0];
+    if (profile && scheduledDay && session?.template_day_id === scheduledDay.id) {
       const nextIndex = (profile.current_day_index + 1) % days.length;
       await updateProfile({ current_day_index: nextIndex });
     }

@@ -15,6 +15,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import type { WorkoutSession, SessionExercise } from "../types";
+import MuscleMap from "../components/MuscleMap";
 
 export default function WorkoutSummaryPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -151,37 +152,59 @@ export default function WorkoutSummaryPage() {
 
       <main className="flex-1 px-4 py-3 max-w-lg mx-auto w-full space-y-3 pb-24 stagger">
         {/* Hero Banner */}
-        <div className="btn-gradient btn-gradient-glow relative rounded-2xl overflow-hidden">
-          <div className="relative px-5 py-5">
-            {prCount > 0 && (
-              <div className="flex items-center gap-1.5 mb-2">
-                <Trophy className="w-3.5 h-3.5 text-white/80" />
-                <span className="text-xs font-semibold text-white/80 uppercase tracking-wide">
-                  {prCount} personal record{prCount !== 1 ? "s" : ""}
-                </span>
-              </div>
-            )}
-            <h2 className="text-2xl font-black text-white mb-3 leading-tight">
-              {workoutName}
-            </h2>
-            <div className="flex items-center gap-3 text-sm text-white/70">
-              <span>
-                {date.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </span>
-              {session.duration_minutes && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    {session.duration_minutes} min
+        <div className="btn-gradient btn-gradient-glow relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(to right, #f59e0b, #ea6000)" }}>
+          <div className="relative px-5 py-4 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              {prCount > 0 && (
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-white/80" />
+                  <span className="text-xs font-semibold text-white/80 uppercase tracking-wide">
+                    {prCount} personal record{prCount !== 1 ? "s" : ""}
                   </span>
-                </>
+                </div>
+              )}
+              <h2 className="text-2xl font-black text-white mb-2 leading-tight truncate">
+                {workoutName}
+              </h2>
+              <div className="flex items-center gap-3 text-sm text-white/70">
+                <span>
+                  {date.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </span>
+                {session.duration_minutes && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {session.duration_minutes} min
+                    </span>
+                  </>
+                )}
+              </div>
+              {muscleGroups.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {muscleGroups.map(({ name }) => (
+                    <span
+                      key={name}
+                      className="text-[11px] font-medium text-white/75 bg-white/10 rounded-full px-2 py-0.5"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
+            {muscleGroups.length > 0 && (
+              <div className="shrink-0">
+                <MuscleMap
+                  muscleGroups={muscleGroups.map((m) => m.name)}
+                  compact
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -199,20 +222,6 @@ export default function WorkoutSummaryPage() {
           prCount={prCount}
           formatVolume={formatVolume}
         />
-
-        {/* Muscle group chips */}
-        {muscleGroups.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {muscleGroups.map(({ name, category }) => (
-              <span
-                key={name}
-                className={`muscle-chip muscle-chip-${category}`}
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        )}
 
         {/* Exercise breakdown */}
         <div className="space-y-2">
@@ -461,7 +470,7 @@ function SummaryStatsBar({
               </p>
             </div>
           </div>
-          {(hasCardio || prCount > 0) && (
+          {hasCardio && (
             <div className="gradient-divider my-2" />
           )}
         </>
