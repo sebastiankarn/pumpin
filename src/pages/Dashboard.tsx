@@ -204,7 +204,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 glass-header px-4 py-4">
+      <header className="sticky top-0 z-10 glass-header px-4 pt-safe-top-4 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PumpkinIcon className="w-9 h-9 text-primary" />

@@ -30,7 +30,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
-      <header className="sticky top-0 z-10 glass-header px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 pt-safe-top-3 pb-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}

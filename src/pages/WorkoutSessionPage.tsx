@@ -296,7 +296,11 @@ export default function WorkoutSessionPage() {
     // Checking template_day_id (stored in DB) avoids the bug where navigating
     // away and returning strips the ?scheduled=false URL param.
     const scheduledDay = days[profile?.current_day_index ?? 0];
-    if (profile && scheduledDay && session?.template_day_id === scheduledDay.id) {
+    if (
+      profile &&
+      scheduledDay &&
+      session?.template_day_id === scheduledDay.id
+    ) {
       const nextIndex = (profile.current_day_index + 1) % days.length;
       await updateProfile({ current_day_index: nextIndex });
     }
@@ -362,7 +366,7 @@ export default function WorkoutSessionPage() {
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 glass-header px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 pt-safe-top-3 pb-3">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/")}
@@ -758,7 +762,10 @@ function ExerciseCard({
     >
       {/* Exercise Header */}
       <div className="w-full px-4 py-3 flex items-center gap-3">
-        <button onClick={onToggle} className="flex-1 flex items-center gap-3 text-left min-w-0">
+        <button
+          onClick={onToggle}
+          className="flex-1 flex items-center gap-3 text-left min-w-0"
+        >
           <div className="flex-1 min-w-0">
             <p className="text-white font-medium truncate">
               {sessionExercise.exercise?.name ?? "Unknown Exercise"}
@@ -770,7 +777,9 @@ function ExerciseCard({
               )}
             </p>
           </div>
-          <span className="text-gray-500 text-sm shrink-0">{sets.length} sets</span>
+          <span className="text-gray-500 text-sm shrink-0">
+            {sets.length} sets
+          </span>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
           ) : (
@@ -779,7 +788,10 @@ function ExerciseCard({
         </button>
         {!isFinished && (
           <button
-            onClick={(e) => { e.stopPropagation(); onSwap(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwap();
+            }}
             className="shrink-0 p-2 text-gray-400 hover:text-warning transition rounded-lg"
             title="Swap exercise"
           >

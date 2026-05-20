@@ -170,6 +170,10 @@
   border-bottom: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow, none);
 }
+/* Safe-area-aware top padding helpers — use instead of pt-3/pt-4 on sticky headers.
+   env(safe-area-inset-top) is 0 in regular browsers, so web layout is unchanged. */
+.pt-safe-top-3 { padding-top: calc(env(safe-area-inset-top) + 0.75rem); }
+.pt-safe-top-4 { padding-top: calc(env(safe-area-inset-top) + 1rem); }
 
 /* ── Ambient gradient mesh background ── */
 .ambient-bg {

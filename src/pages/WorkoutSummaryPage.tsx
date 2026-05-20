@@ -138,7 +138,7 @@ export default function WorkoutSummaryPage() {
   return (
     <div className="min-h-svh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 glass-header px-4 py-3">
+      <header className="sticky top-0 z-10 glass-header px-4 pt-safe-top-3 pb-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -152,7 +152,10 @@ export default function WorkoutSummaryPage() {
 
       <main className="flex-1 px-4 py-3 max-w-lg mx-auto w-full space-y-3 pb-24 stagger">
         {/* Hero Banner */}
-        <div className="btn-gradient btn-gradient-glow relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(to right, #f59e0b, #ea6000)" }}>
+        <div
+          className="btn-gradient btn-gradient-glow relative rounded-2xl overflow-hidden"
+          style={{ background: "linear-gradient(to right, #f59e0b, #ea6000)" }}
+        >
           <div className="relative px-5 py-4 flex items-center gap-3">
             <div className="flex-1 min-w-0">
               {prCount > 0 && (
@@ -470,9 +473,7 @@ function SummaryStatsBar({
               </p>
             </div>
           </div>
-          {hasCardio && (
-            <div className="gradient-divider my-2" />
-          )}
+          {hasCardio && <div className="gradient-divider my-2" />}
         </>
       )}
       {hasCardio && (
