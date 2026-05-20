@@ -1,30 +1,54 @@
 import Model, { type Muscle } from "react-body-highlighter";
 
-// Mapping from the app's muscle_group strings → react-body-highlighter muscle names
+// Mapping from the app's muscle_group strings → react-body-highlighter muscle names.
+// Keys are lowercase to allow case-insensitive matching.
 const MUSCLE_MAP: Record<string, Muscle[]> = {
-  Chest: ["chest"],
-  Back: ["upper-back", "lower-back", "trapezius"],
-  Shoulders: ["front-deltoids", "back-deltoids"],
-  Biceps: ["biceps"],
-  Triceps: ["triceps"],
-  Hamstrings: ["hamstring"],
-  Quadriceps: ["quadriceps"],
-  Glutes: ["gluteal"],
-  Calves: ["calves"],
-  Core: ["abs", "obliques"],
-  Forearms: ["forearm"],
-  Adductors: ["adductor"],
-  Abductors: ["abductors"],
+  chest: ["chest"],
+  back: ["upper-back", "lower-back", "trapezius"],
+  "upper back": ["upper-back", "trapezius"],
+  "lower back": ["lower-back"],
+  trapezius: ["trapezius"],
+  shoulders: ["front-deltoids", "back-deltoids"],
+  shoulder: ["front-deltoids", "back-deltoids"],
+  deltoids: ["front-deltoids", "back-deltoids"],
+  "front deltoids": ["front-deltoids"],
+  "rear deltoids": ["back-deltoids"],
+  biceps: ["biceps"],
+  bicep: ["biceps"],
+  triceps: ["triceps"],
+  tricep: ["triceps"],
+  hamstrings: ["hamstring"],
+  hamstring: ["hamstring"],
+  quadriceps: ["quadriceps"],
+  quads: ["quadriceps"],
+  quad: ["quadriceps"],
+  legs: ["quadriceps", "hamstring", "gluteal", "calves", "adductor"],
+  glutes: ["gluteal"],
+  gluteal: ["gluteal"],
+  calves: ["calves"],
+  calf: ["calves"],
+  core: ["abs", "obliques"],
+  abs: ["abs"],
+  obliques: ["obliques"],
+  forearms: ["forearm"],
+  forearm: ["forearm"],
+  adductors: ["adductor"],
+  adductor: ["adductor"],
+  abductors: ["abductors"],
+  abductor: ["abductors"],
 };
 
 interface MuscleMapProps {
   muscleGroups: string[]; // e.g. ['Chest', 'Triceps']
-  compact?: boolean;      // inline compact mode for hero banner
+  compact?: boolean; // inline compact mode for hero banner
 }
 
-export default function MuscleMap({ muscleGroups, compact = false }: MuscleMapProps) {
+export default function MuscleMap({
+  muscleGroups,
+  compact = false,
+}: MuscleMapProps) {
   const data = muscleGroups.flatMap((mg) => {
-    const muscles = MUSCLE_MAP[mg];
+    const muscles = MUSCLE_MAP[mg.toLowerCase().trim()];
     if (!muscles) return [];
     return [{ name: mg, muscles }];
   });
