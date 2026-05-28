@@ -743,6 +743,7 @@ function ExerciseCard({
   const [expandedNoteIndex, setExpandedNoteIndex] = useState<number | null>(
     null,
   );
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const videoUrl = sessionExercise.exercise?.video_url;
   const exType = sessionExercise.exercise?.exercise_type ?? "strength";
   const isCardio = exType === "cardio";
@@ -975,12 +976,30 @@ function ExerciseCard({
                 previousSet={previousSets[sets.length] ?? sets[sets.length - 1]}
                 onAddSet={onAddSet}
               />
-              <button
-                onClick={onRemove}
-                className="flex items-center gap-1 text-gray-400 hover:text-danger text-sm px-3 py-2 bg-surface-light rounded-lg transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmRemove ? (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setConfirmRemove(false)}
+                    className="text-gray-400 text-sm px-3 py-2 bg-surface-light rounded-lg transition hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={onRemove}
+                    className="flex items-center gap-1 text-white text-sm px-3 py-2 bg-danger/80 rounded-lg transition hover:bg-danger"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmRemove(true)}
+                  className="flex items-center gap-1 text-gray-400 hover:text-danger text-sm px-3 py-2 bg-surface-light rounded-lg transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </div>

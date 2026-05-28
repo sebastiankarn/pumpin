@@ -139,12 +139,12 @@ export default function BodyWeightWidget({
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="date"
+              dataKey="_index"
               tick={{ fontSize: 10, fill: "#6b7280" }}
               tickLine={false}
               axisLine={false}
-              allowDuplicatedCategory={false}
               interval="preserveStartEnd"
+              tickFormatter={(idx) => displayLogs[idx]?.date ?? ""}
             />
             <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
             <Tooltip
@@ -156,6 +156,7 @@ export default function BodyWeightWidget({
               }}
               labelStyle={{ color: "#9ca3af" }}
               itemStyle={{ color: "#f97316" }}
+              labelFormatter={(idx) => displayLogs[idx as number]?.date ?? ""}
               formatter={(value) => [
                 `${Number(value).toFixed(2)} ${unit}`,
                 "Weight",

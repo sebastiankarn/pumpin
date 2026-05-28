@@ -79,12 +79,12 @@ export default function VolumeChart({
             </linearGradient>
           </defs>
           <XAxis
-            dataKey="date"
+            dataKey="_index"
             tick={{ fontSize: 10, fill: "#6b7280" }}
             tickLine={false}
             axisLine={false}
-            allowDuplicatedCategory={false}
             interval="preserveStartEnd"
+            tickFormatter={(idx) => indexedData[idx]?.date ?? ""}
           />
           <YAxis hide />
           <Tooltip
@@ -96,6 +96,7 @@ export default function VolumeChart({
             }}
             labelStyle={{ color: "#9ca3af" }}
             itemStyle={{ color: "#f97316" }}
+            labelFormatter={(idx) => indexedData[idx as number]?.date ?? ""}
             formatter={(value) =>
               metric === "volume"
                 ? [`${Number(value).toLocaleString()} ${unit}`, "Volume"]
